@@ -377,16 +377,42 @@ handle_tools_call(struct protocol_ctx *ctx,
     }
 
     if (strcmp(tool, "run_inspect_command") == 0) {
+        /*
+         * Parse the "args" JSON array into a flat storage buffer.
+         * Each arg slot is 256 bytes; we hold pointers into that buffer.
+         */
+        static char arg_storage[EXEC_ARGS_MAX][256];
+        static const char *arg_ptrs[EXEC_ARGS_MAX + 1];
+        char exec_args_json[4096]; /* raw "args" array sub-value */
         char cmd[32];
-        char args_raw[1024];
-        const char *arg_ptrs[EXEC_ARGS_MAX + 1];
-        /* TODO: parse args array from args_json */
-        (void)args_raw; (void)arg_ptrs; (void)content_buf;
+        int  nargs, ai;
+
+        (void)content_buf; /* not used by this branch */
+
         if (json_get_string(args_json, "command", cmd, sizeof(cmd)) != 0)
             return jsonrpc_write_error(resp, (size_t)rsz,
                        req->id, req->id_is_null,
                        JSONRPC_INVALID_PARAMS, "missing command");
-        arg_ptrs[0] = NULL;
+
+        /* extract args array: wrap it so json_get_string_array can find it */
+        exec_args_json[0] = '\0';
+        json_get_object(args_json, "args", exec_args_json, sizeof(exec_args_json));
+
+        nargs = 0;
+        if (exec_args_json[0] == '[') {
+            char wrapped[4096 + 16];
+            int  wn = snprintf(wrapped, sizeof(wrapped),
+                               "{\"a\":%s}", exec_args_json);
+            if (wn > 0 && (size_t)wn < sizeof(wrapped)) {
+                nargs = json_get_string_array(wrapped, "a",
+                            (char *)arg_storage, 256, EXEC_ARGS_MAX);
+                if (nargs < 0) nargs = 0;
+            }
+        }
+
+        for (ai = 0; ai < nargs; ai++) arg_ptrs[ai] = arg_storage[ai];
+        arg_ptrs[nargs] = NULL;
+
         n = tool_run_inspect_command(ctx->policy, cmd,
                                      arg_ptrs, result, sizeof(result));
         return (n > 0) ? wrap_tool_result(resp, rsz,

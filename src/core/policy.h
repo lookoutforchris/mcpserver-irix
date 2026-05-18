@@ -103,4 +103,12 @@ int policy_is_cmd_allowed(const struct policy *p, const char *command);
  */
 int policy_is_full_profile(const struct policy *p);
 
+/*
+ * policy_is_path_in_rw_root - check if canonical path is under a rw_root,
+ * passes deny checks, but does NOT check the write extension allowlist.
+ * Used for make_directory (no extension) and rename_path destination.
+ * Returns 1 if allowed, 0 if denied.
+ */
+int policy_is_path_in_rw_root(const struct policy *p, const char *path);
+
 #endif /* MCPSERVER_POLICY_H */

@@ -288,6 +288,29 @@ policy_is_write_allowed(const struct policy *p, const char *path)
 }
 
 int
+policy_is_path_in_rw_root(const struct policy *p, const char *path)
+{
+    char canonical[MCPSERVER_PATH_MAX];
+
+    if (!p || !path) return 0;
+
+    if (!mcp_realpath(path, canonical)) return 0;
+
+    if (path_matches_global_deny(canonical)) return 0;
+    if (path_matches_deny(canonical,
+            (const char (*)[POLICY_PATTERN_MAX])p->deny,
+            p->deny_count))
+        return 0;
+    if (path_matches_deny(canonical,
+            (const char (*)[POLICY_PATTERN_MAX])p->write_deny,
+            p->write_deny_count))
+        return 0;
+
+    return is_under_roots((const char (*)[MCPSERVER_PATH_MAX])p->rw_roots,
+                          p->rw_count, canonical);
+}
+
+int
 policy_is_cmd_allowed(const struct policy *p, const char *command)
 {
     int i;
