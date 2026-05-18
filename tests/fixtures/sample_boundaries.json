@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "generated_from": "/etc/mcpserver/projects.json",
+  "generated_at": "2026-05-18T00:00:00",
+  "read_write_roots": [
+    "/work/myproject"
+  ],
+  "read_only_roots": [],
+  "deny_overrides": [
+    "/work/myproject/.env",
+    "/work/myproject/.env.*"
+  ],
+  "write_rules": {
+    "allow_create_extensions": [".md",".txt",".json",".c",".h",".s",".S",".sh",".mk"],
+    "allow_create_names": ["Makefile","Imakefile"],
+    "allow_replace_extensions": [".md",".txt",".json",".c",".h",".s",".S",".sh",".mk"],
+    "allow_replace_names": ["Makefile","Imakefile"],
+    "deny_write_globs": ["**/.env","**/.env.*","**/*.secret","**/*.key","**/*.pem"]
+  },
+  "read_rules": {
+    "deny_read_globs": ["**/.env","**/.env.*","**/*.secret","**/*.key","**/*.pem"]
+  },
+  "shell_rules": {
+    "allowed_commands": ["pwd","ls","find","cat","grep","head","tail","sed","wc","stat"],
+    "allow_shell": false,
+    "allow_pipes": false,
+    "allow_redirects": false,
+    "allow_glob_expansion": false
+  }
+}
