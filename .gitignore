@@ -1,0 +1,38 @@
+# ============================================================
+# Local research library: not published
+# ============================================================
+/reference-local/
+
+# ============================================================
+# IRIX build artifacts (produced on Octane2 / emulator)
+# ============================================================
+*.o
+*.a
+*.so
+*.so.*
+
+# Built binaries (IRIX ELF executables have no extension)
+/build/
+/dist/
+
+# Packaging output
+*.tardist
+*.tardist.z
+packaging/*/dist/
+
+# ============================================================
+# Editor and OS noise
+# ============================================================
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ============================================================
+# IDE / tooling
+# ============================================================
+.vscode/settings.json
+.idea/
+*.orig

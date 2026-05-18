@@ -1,0 +1,23 @@
+# Enforce LF line endings in the repo for everything.
+# IRIX uses LF; Windows editors should handle this fine with modern tooling.
+* text=auto eol=lf
+
+# Treat C source as text explicitly
+*.c text eol=lf
+*.h text eol=lf
+*.s text eol=lf
+*.S text eol=lf
+
+# Treat docs and scripts as text
+*.md text eol=lf
+*.json text eol=lf
+*.sh text eol=lf
+*.mk text eol=lf
+Makefile text eol=lf
+Imakefile text eol=lf
+
+# Treat these as true binary — never mangle
+*.o binary
+*.a binary
+*.tardist binary
+*.pdf binary
