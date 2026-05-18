@@ -95,4 +95,30 @@ int json_get_int(const char *json, const char *field, int *out);
  */
 int json_get_bool(const char *json, const char *field, int *out);
 
+/*
+ * json_get_object - extract a sub-object or sub-array as raw JSON text.
+ *
+ * Copies the raw JSON value (including braces/brackets) into out.
+ * Handles nested structures via bracket counting.
+ * Returns 0 on success, -1 if field not found or value is not {}/[].
+ */
+int json_get_object(const char *json, const char *field,
+                    char *out, size_t outsz);
+
+/*
+ * json_get_string_array - extract an array of JSON strings.
+ *
+ * out_buf is a flat buffer: item i starts at out_buf + i * item_maxlen.
+ * Each string is written as a null-terminated C string.
+ * Returns the number of items extracted (may be 0), or -1 on error.
+ *
+ * Usage:
+ *   char roots[POLICY_ROOTS_MAX][MCPSERVER_PATH_MAX];
+ *   int n = json_get_string_array(json, "read_write_roots",
+ *                                  (char *)roots, MCPSERVER_PATH_MAX,
+ *                                  POLICY_ROOTS_MAX);
+ */
+int json_get_string_array(const char *json, const char *field,
+                           char *out_buf, int item_maxlen, int maxcount);
+
 #endif /* MCPSERVER_JSON_H */

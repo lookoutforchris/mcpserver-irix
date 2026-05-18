@@ -10,6 +10,7 @@
 
 #include "policy.h"
 #include "result.h"
+#include "json.h"
 #include "../compat/compat.h"
 
 #include <stdio.h>
@@ -131,7 +132,9 @@ policy_load(const char *path, struct policy *p)
 {
     FILE *f;
     char  buf[65536];
+    char  sub[32768]; /* sub-object buffer for write_rules etc. */
     int   n;
+    char *env_profile;
 
     if (!path || !p) {
         syslog(LOG_ERR, "policy_load: NULL argument");
@@ -140,6 +143,13 @@ policy_load(const char *path, struct policy *p)
 
     memset(p, 0, sizeof(*p));
     strcpy(p->profile, "full"); /* default */
+
+    /* allow env var override for profile (useful for read-only SSH sessions) */
+    env_profile = getenv("MCPSERVER_PROFILE");
+    if (env_profile &&
+        (strcmp(env_profile, "full") == 0 ||
+         strcmp(env_profile, "readonly") == 0))
+        strncpy(p->profile, env_profile, sizeof(p->profile) - 1);
 
     f = fopen(path, "r");
     if (!f) {
@@ -156,23 +166,54 @@ policy_load(const char *path, struct policy *p)
     }
     buf[n] = '\0';
 
-    /*
-     * TODO: parse boundaries.json fields:
-     *   read_write_roots  -> p->rw_roots[]
-     *   read_only_roots   -> p->ro_roots[]
-     *   deny_overrides    -> p->deny[]
-     *   write_rules.deny_write_globs -> p->write_deny[]
-     *   read_rules.deny_read_globs   -> p->read_deny[]
-     *   write_rules.allow_create_extensions -> p->allow_ext[]
-     *   write_rules.allow_create_names      -> p->allow_name[]
-     *   shell_rules.allowed_commands        -> p->allowed_cmds[]
-     *   profile (env var override)          -> p->profile
-     *
-     * Using json_get_string / json arrays once the JSON parser supports
-     * array extraction.
-     */
+    /* top-level string arrays */
+    p->rw_count = json_get_string_array(buf, "read_write_roots",
+                      (char *)p->rw_roots, MCPSERVER_PATH_MAX, POLICY_ROOTS_MAX);
+    if (p->rw_count < 0) p->rw_count = 0;
 
-    syslog(LOG_INFO, "policy_load: loaded %s", path);
+    p->ro_count = json_get_string_array(buf, "read_only_roots",
+                      (char *)p->ro_roots, MCPSERVER_PATH_MAX, POLICY_ROOTS_MAX);
+    if (p->ro_count < 0) p->ro_count = 0;
+
+    p->deny_count = json_get_string_array(buf, "deny_overrides",
+                        (char *)p->deny, POLICY_PATTERN_MAX, POLICY_DENY_MAX);
+    if (p->deny_count < 0) p->deny_count = 0;
+
+    /* write_rules sub-object */
+    if (json_get_object(buf, "write_rules", sub, sizeof(sub)) == 0) {
+        p->allow_ext_count = json_get_string_array(sub, "allow_create_extensions",
+                                 (char *)p->allow_ext, 32, POLICY_EXT_MAX);
+        if (p->allow_ext_count < 0) p->allow_ext_count = 0;
+
+        p->allow_name_count = json_get_string_array(sub, "allow_create_names",
+                                  (char *)p->allow_name, 64, POLICY_NAME_MAX);
+        if (p->allow_name_count < 0) p->allow_name_count = 0;
+
+        p->write_deny_count = json_get_string_array(sub, "deny_write_globs",
+                                  (char *)p->write_deny, POLICY_PATTERN_MAX,
+                                  POLICY_DENY_MAX);
+        if (p->write_deny_count < 0) p->write_deny_count = 0;
+    }
+
+    /* read_rules sub-object */
+    if (json_get_object(buf, "read_rules", sub, sizeof(sub)) == 0) {
+        p->read_deny_count = json_get_string_array(sub, "deny_read_globs",
+                                 (char *)p->read_deny, POLICY_PATTERN_MAX,
+                                 POLICY_DENY_MAX);
+        if (p->read_deny_count < 0) p->read_deny_count = 0;
+    }
+
+    /* shell_rules sub-object */
+    if (json_get_object(buf, "shell_rules", sub, sizeof(sub)) == 0) {
+        p->cmd_count = json_get_string_array(sub, "allowed_commands",
+                           (char *)p->allowed_cmds, 32, POLICY_CMDS_MAX);
+        if (p->cmd_count < 0) p->cmd_count = 0;
+    }
+
+    syslog(LOG_INFO,
+           "policy_load: loaded %s (rw=%d ro=%d deny=%d cmds=%d profile=%s)",
+           path, p->rw_count, p->ro_count, p->deny_count,
+           p->cmd_count, p->profile);
     return 0;
 }
 

@@ -307,3 +307,117 @@ json_get_bool(const char *json, const char *field, int *out)
     }
     return -1;
 }
+
+/*
+ * scan_value_end - return pointer past the end of one JSON value starting at p.
+ * Handles strings, numbers, booleans, null, objects, and arrays.
+ */
+static const char *
+scan_value_end(const char *p)
+{
+    int   depth;
+    char  open, close;
+
+    p = skip_ws(p);
+
+    if (*p == '"') {
+        p++;
+        while (*p && *p != '"') {
+            if (*p == '\\') p++;
+            if (*p) p++;
+        }
+        return *p ? p + 1 : NULL;
+    }
+
+    if (*p == '{' || *p == '[') {
+        open  = *p;
+        close = (*p == '{') ? '}' : ']';
+        depth = 0;
+        while (*p) {
+            if (*p == '"') {
+                p++;
+                while (*p && *p != '"') {
+                    if (*p == '\\') p++;
+                    if (*p) p++;
+                }
+                if (*p) p++;
+                continue;
+            }
+            if (*p == open)  depth++;
+            if (*p == close) { depth--; if (depth == 0) return p + 1; }
+            p++;
+        }
+        return NULL;
+    }
+
+    /* number, boolean, null: scan until delimiter */
+    while (*p && *p != ',' && *p != '}' && *p != ']' &&
+           *p != ' ' && *p != '\t' && *p != '\n' && *p != '\r')
+        p++;
+    return p;
+}
+
+int
+json_get_object(const char *json, const char *field, char *out, size_t outsz)
+{
+    const char *val;
+    const char *end;
+    size_t      n;
+
+    val = find_field(json, field);
+    if (!val) return -1;
+    val = skip_ws(val);
+
+    if (*val != '{' && *val != '[') return -1;
+
+    end = scan_value_end(val);
+    if (!end) return -1;
+
+    n = (size_t)(end - val);
+    if (n >= outsz) return -1;
+
+    memcpy(out, val, n);
+    out[n] = '\0';
+    return 0;
+}
+
+int
+json_get_string_array(const char *json, const char *field,
+                       char *out_buf, int item_maxlen, int maxcount)
+{
+    const char *val;
+    int         count = 0;
+    char       *slot;
+
+    val = find_field(json, field);
+    if (!val) return -1;
+    val = skip_ws(val);
+    if (*val != '[') return -1;
+    val++;
+
+    while (count < maxcount) {
+        val = skip_ws(val);
+        if (*val == ']') break;
+        if (*val == ',') { val++; continue; }
+
+        if (*val == '"') {
+            slot = out_buf + count * item_maxlen;
+            if (read_string(val, slot, (size_t)item_maxlen) < 0)
+                return -1;
+            count++;
+            /* advance past this string */
+            val++;
+            while (*val && *val != '"') {
+                if (*val == '\\') val++;
+                if (*val) val++;
+            }
+            if (*val) val++; /* past closing " */
+        } else {
+            /* skip non-string element */
+            val = scan_value_end(val);
+            if (!val) break;
+        }
+    }
+
+    return count;
+}
