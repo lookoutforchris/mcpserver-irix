@@ -17,6 +17,7 @@ A long-running IRIX process that:
 - Loads and validates the active boundary policy from `/etc/mcpserver/boundaries.json` at startup.
 - Binds a UNIX-domain socket at `/var/run/mcpserverd.sock`.
 - Accepts connections from bridge clients via `accept()`.
+- **Forks a child process for each connection** so multiple Claude Code / Codex sessions connect simultaneously without blocking each other.
 - Handles MCP tool requests dispatched from connected bridge processes.
 - Writes operational logs via `syslog(3)`.
 - Responds to `SIGTERM` for clean shutdown, `SIGHUP` to reload policy.
@@ -87,7 +88,7 @@ bridge connects → daemon accept() → bridge sends request (JSON line)
 bridge stdin closed → bridge sends no more requests → bridge closes socket
 ```
 
-The daemon handles one bridge connection at a time in v1. Multiple concurrent bridge connections are not required for the single-user, local-first use case. This simplifies the daemon significantly.
+The daemon forks a child process for each accepted connection. The parent immediately loops back to `accept()`. Each child serves one bridge session independently. The `SIGCHLD` handler in the parent reaps finished children. This allows multiple Claude Code conversations to use the MCP server simultaneously.
 
 ---
 
