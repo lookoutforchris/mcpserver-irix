@@ -30,6 +30,11 @@ CC       = /opt/MIPSpro/bin/cc
 BUILDDIR = build
 INCLUDES = -Isrc
 
+# SGUG-RSE sets LIBRARY_PATH which MIPSpro picks up and tries to use as -L
+# flags. The path (/usr/sgug/lib32) is not a valid MIPSpro library directory
+# and produces a spurious warning. Clear it for clean MIPSpro output.
+LIBRARY_PATH =
+
 # ---------------------------------------------------------------
 # Source lists
 # ---------------------------------------------------------------
@@ -50,12 +55,20 @@ DAEMON_SRCS = \
 	src/daemon/ipc.c \
 	src/daemon/mcpserverd.c
 
+# Note: DAEMON_SRCS kept for reference but DAEMON_ALL and CLI_ALL use
+# IPC_SRCS and DAEMON_MAIN separately so ipc.c is shared with the CLI.
+
 CLI_SRCS = \
 	src/cli/stdio_bridge.c \
 	src/cli/mcpserver.c
 
-DAEMON_ALL = $(COMPAT_SRCS) $(CORE_SRCS) $(DAEMON_SRCS)
-CLI_ALL    = $(COMPAT_SRCS) $(CORE_SRCS) $(CLI_SRCS)
+# ipc.c is shared: the stdio bridge (CLI) connects to the daemon socket
+# using ipc_read_line / ipc_write_all, so ipc.c must be in both builds.
+IPC_SRCS    = src/daemon/ipc.c
+DAEMON_MAIN = src/daemon/mcpserverd.c
+
+DAEMON_ALL = $(COMPAT_SRCS) $(CORE_SRCS) $(IPC_SRCS) $(DAEMON_MAIN)
+CLI_ALL    = $(COMPAT_SRCS) $(CORE_SRCS) $(IPC_SRCS) $(CLI_SRCS)
 
 # ---------------------------------------------------------------
 # IRIX 6.5 (default): N32 MIPS-IV
@@ -67,7 +80,10 @@ CLI_ALL    = $(COMPAT_SRCS) $(CORE_SRCS) $(CLI_SRCS)
 # Required for: snprintf, sigaction, sigemptyset, WNOHANG, and other
 # POSIX symbols that -ansi alone hides in MIPSpro's strict mode.
 # ---------------------------------------------------------------
-CFLAGS  = -n32 -mips4 -O2 -ansi -fullwarn -D_SGI_SOURCE
+# -woff 1429: suppress "long long is nonstandard" from IRIX system headers.
+# /usr/include/internal/stdlib_core.h uses long long internally; with -ansi
+# -fullwarn MIPSpro warns about it even though it is not our code.
+CFLAGS  = -n32 -mips4 -O2 -ansi -fullwarn -D_SGI_SOURCE -woff 1429
 LDFLAGS = -n32
 
 all: mcpserverd mcpserver
@@ -96,7 +112,7 @@ irix65: all
 LIB32        = /usr/lib32
 CRT1_MIPS3   = $(LIB32)/mips3/crt1.o
 CRTN_MIPS3   = $(LIB32)/mips3/crtn.o
-CFLAGS_MIPS3 = -n32 -mips3 -O2 -ansi -fullwarn -D_SGI_SOURCE
+CFLAGS_MIPS3 = -n32 -mips3 -O2 -ansi -fullwarn -D_SGI_SOURCE -woff 1429
 
 irix62: irix62-check
 	@mkdir -p $(BUILDDIR)/mips3/d $(BUILDDIR)/mips3/c

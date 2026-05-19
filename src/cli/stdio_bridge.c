@@ -73,7 +73,7 @@ bridge_run(void)
      * the MCP stdio transport model where each request gets one response
      * before the next request is sent.
      */
-    while (1) {
+    for (;;) {
         /* read from stdin */
         if (fgets(line, sizeof(line), stdin) == NULL)
             break; /* EOF: client disconnected */
