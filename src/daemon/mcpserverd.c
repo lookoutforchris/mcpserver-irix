@@ -188,8 +188,12 @@ main(int argc, char *argv[])
 
     syslog(LOG_INFO, "mcpserverd: ready, waiting for connections");
 
-    /* main accept loop */
+    /* main accept loop — fork for each connection so multiple stdio
+     * bridges (one per Claude Code / Codex session) work concurrently.
+     * SIGCHLD handler reaps finished children. */
     while (g_running) {
+        pid_t child;
+
         if (g_reload) {
             g_reload = 0;
             syslog(LOG_INFO, "mcpserverd: reloading policy");
@@ -202,8 +206,23 @@ main(int argc, char *argv[])
             continue;
         }
 
-        /* v1: single connection at a time */
-        handle_connection(client_fd, &p);
+        child = fork();
+        if (child < 0) {
+            syslog(LOG_ERR, "mcpserverd: fork failed: %m");
+            close(client_fd);
+            continue;
+        }
+
+        if (child == 0) {
+            /* child: close the listening socket, handle this client */
+            close(listen_fd);
+            handle_connection(client_fd, &p);
+            exit(0);
+        }
+
+        /* parent: close client fd and loop back to accept */
+        close(client_fd);
+        syslog(LOG_INFO, "mcpserverd: spawned handler pid %ld", (long)child);
     }
 
     syslog(LOG_INFO, "mcpserverd: shutting down");
