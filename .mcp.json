@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "irix-octane2": {
+      "type": "stdio",
+      "command": "ssh",
+      "args": [
+        "-T",
+        "root@speed.siliconsurf.net",
+        "/home/chris/src/mcpserver-irix/mcpserver",
+        "stdio"
+      ]
+    }
+  }
+}
