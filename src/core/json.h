@@ -121,4 +121,13 @@ int json_get_object(const char *json, const char *field,
 int json_get_string_array(const char *json, const char *field,
                            char *out_buf, int item_maxlen, int maxcount);
 
+/*
+ * json_array_get_item - extract the Nth item (0-based) from a JSON array.
+ * array_json must start with '['.
+ * Copies raw JSON of the item into out (null-terminated).
+ * Returns 0 on success, -1 if index out of range or parse error.
+ */
+int json_array_get_item(const char *array_json, int index,
+                        char *out, size_t outsz);
+
 #endif /* MCPSERVER_JSON_H */

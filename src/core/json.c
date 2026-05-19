@@ -421,3 +421,39 @@ json_get_string_array(const char *json, const char *field,
 
     return count;
 }
+
+int
+json_array_get_item(const char *array_json, int index, char *out, size_t outsz)
+{
+    const char *p;
+    const char *end;
+    int         i;
+    size_t      n;
+
+    if (!array_json || !out || outsz == 0) return -1;
+
+    p = skip_ws(array_json);
+    if (!p || *p != '[') return -1;
+    p++;
+
+    i = 0;
+    while (*p) {
+        p = skip_ws(p);
+        if (!p || !*p || *p == ']') return -1;
+        if (*p == ',')              { p++; continue; }
+
+        end = scan_value_end(p);
+        if (!end) return -1;
+
+        if (i == index) {
+            n = (size_t)(end - p);
+            if (n >= outsz) return -1;
+            memcpy(out, p, n);
+            out[n] = '\0';
+            return 0;
+        }
+        i++;
+        p = end;
+    }
+    return -1;
+}
