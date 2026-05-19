@@ -29,7 +29,6 @@ ipc_listen(void)
 {
     int                fd;
     struct sockaddr_un addr;
-    int                mode;
 
     /* unlink stale socket from previous run or crash */
     unlink(IPC_SOCK_PATH);

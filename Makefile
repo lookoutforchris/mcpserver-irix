@@ -62,8 +62,12 @@ CLI_ALL    = $(COMPAT_SRCS) $(CORE_SRCS) $(CLI_SRCS)
 #
 # Correct for the Octane2 (R10000). /usr/lib32/crt1.o on this
 # machine is already a MIPS-IV object, so no startup override needed.
+#
+# -D_SGI_SOURCE: enables POSIX and SGI extensions in ANSI mode.
+# Required for: snprintf, sigaction, sigemptyset, WNOHANG, and other
+# POSIX symbols that -ansi alone hides in MIPSpro's strict mode.
 # ---------------------------------------------------------------
-CFLAGS  = -n32 -mips4 -O2 -ansi -fullwarn
+CFLAGS  = -n32 -mips4 -O2 -ansi -fullwarn -D_SGI_SOURCE
 LDFLAGS = -n32
 
 all: mcpserverd mcpserver
@@ -92,7 +96,7 @@ irix65: all
 LIB32        = /usr/lib32
 CRT1_MIPS3   = $(LIB32)/mips3/crt1.o
 CRTN_MIPS3   = $(LIB32)/mips3/crtn.o
-CFLAGS_MIPS3 = -n32 -mips3 -O2 -ansi -fullwarn
+CFLAGS_MIPS3 = -n32 -mips3 -O2 -ansi -fullwarn -D_SGI_SOURCE
 
 irix62: irix62-check
 	@mkdir -p $(BUILDDIR)/mips3/d $(BUILDDIR)/mips3/c
@@ -142,9 +146,9 @@ irix62-check:
 # Static linking avoids libc version dependency across IRIX releases.
 # ---------------------------------------------------------------
 irix53:
-	$(CC) -o32 -mips2 -O2 -ansi -fullwarn -static \
+	$(CC) -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE -static \
 		$(INCLUDES) -o mcpserverd $(DAEMON_ALL)
-	$(CC) -o32 -mips2 -O2 -ansi -fullwarn -static \
+	$(CC) -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE -static \
 		$(INCLUDES) -o mcpserver $(CLI_ALL)
 
 # ---------------------------------------------------------------

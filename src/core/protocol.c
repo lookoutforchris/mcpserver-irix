@@ -238,8 +238,6 @@ handle_tools_call(struct protocol_ctx *ctx,
     char        content_buf[MCP_CONTENT_MAX + 1];
     static char result[PROTO_RESP_MAX];
     const char *params;
-    int         int_val;
-    int         bool_val;
     int         n;
 
     params = req->params_start ? req->params_start : "{}";
@@ -484,9 +482,6 @@ handle_tools_call(struct protocol_ctx *ctx,
         return (n > 0) ? wrap_tool_result(resp, rsz,
                          req->id, req->id_is_null, result) : -1;
     }
-
-    /* suppress unused variable warnings for stubs */
-    (void)int_val; (void)bool_val;
 
     return jsonrpc_write_error(resp, (size_t)rsz,
                                req->id, req->id_is_null,
