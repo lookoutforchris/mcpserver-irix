@@ -199,6 +199,7 @@ install: all
 # ---------------------------------------------------------------
 clean:
 	rm -f mcpserverd mcpserver
+	rm -f *.o
 	rm -rf $(BUILDDIR)
 
 .PHONY: all irix65 irix62 irix62-check irix53 verify-isa install clean
