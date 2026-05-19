@@ -30,10 +30,11 @@ CC       = /opt/MIPSpro/bin/cc
 BUILDDIR = build
 INCLUDES = -Isrc
 
-# SGUG-RSE sets LIBRARY_PATH which MIPSpro picks up and tries to use as -L
-# flags. The path (/usr/sgug/lib32) is not a valid MIPSpro library directory
-# and produces a spurious warning. Clear it for clean MIPSpro output.
-LIBRARY_PATH =
+# SGUG-RSE exports LIBRARY_PATH=/usr/sgug/lib32 (with a known typo as
+# /usr/sgus/lib32 in their config). MIPSpro converts LIBRARY_PATH into -L
+# flags and warns when the directory does not exist. unexport prevents make
+# from passing this variable to compiler subprocesses at all.
+unexport LIBRARY_PATH
 
 # ---------------------------------------------------------------
 # Source lists
