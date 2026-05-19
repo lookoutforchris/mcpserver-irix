@@ -6,24 +6,38 @@ This document records the confirmed technical facts for each build target and de
 
 ## 1. Build Target Matrix
 
-| Target | Compiler | ABI | ISA flag | C mode | Static link |
+| Target | Compiler | ABI | ISA | C mode | Static link |
 |---|---|---|---|---|---|
-| IRIX 5.3 | ucode `cc` (IDO) | O32 (only option) | `-mips2` | **K&R by default — must use `-ansi`** | Yes (recommended) |
-| IRIX 6.2 compat | MIPSpro `cc` | O32 | `-o32 -mips2` | ANSI by default | Yes |
-| IRIX 6.2 native | MIPSpro `cc` | N32 | `-n32 -mips3` | ANSI by default | Optional |
-| IRIX 6.5 | MIPSpro 7.4 `cc` | N32 | `-n32 -mips3` | ANSI by default | Optional |
+| IRIX 5.3 | ucode `cc` (IDO) | O32 | MIPS-II | **K&R by default — must use `-ansi`** | Yes |
+| IRIX 6.2 | MIPSpro `cc` | N32 | MIPS-III | ANSI by default | Optional |
+| IRIX 6.5 | MIPSpro 7.4 | N32 | **MIPS-IV** | ANSI by default | Optional |
+
+**IRIX 6.5 ISA is MIPS-IV, not MIPS-III.** The primary build machine is an Octane2 (R10000). R10000 is a MIPS-IV processor. `/etc/compiler.defaults` on this system reads `-DEFAULT:abi=n32:isa=mips4:proc=r10k`. Using `-mips4` for the `irix65` target matches the native ISA and avoids the startup object mismatch described in §9.
+
+Using `-mips3` for IRIX 6.2 targets (R4000/R5000 hardware) requires the explicit startup object workaround described in §9.
 
 ### 1.1 Recommended build commands
 
 ```sh
-# IRIX 5.3 (on a 5.3 system with IDO, or on 6.5 with -o32)
-cc -ansi -o32 -mips2 -O2 -fullwarn -static -o mcpserverd src/...
+# IRIX 5.3 (IDO ucode compiler; or cross-build on 6.5 with -o32)
+/opt/MIPSpro/bin/cc -ansi -o32 -mips2 -O2 -fullwarn -static -o mcpserverd src/...
 
-# IRIX 6.2 / 6.5 (native N32, on the Octane2)
-cc -n32 -mips3 -O2 -fullwarn -o mcpserverd src/...
+# IRIX 6.5 native (R10000 Octane2) — N32 MIPS-IV, no startup-object issue
+/opt/MIPSpro/bin/cc -n32 -mips4 -O2 -ansi -fullwarn -o mcpserverd src/...
 
-# IRIX 6.5 building a 5.3-compatible O32 binary (cross-target on Octane2)
-cc -ansi -o32 -mips2 -O2 -fullwarn -static -o mcpserverd-53 src/...
+# IRIX 6.2 / MIPS-III compat — requires explicit startup objects; see §9
+# (Do not use a single cc invocation; see Makefile irix62 target)
+```
+
+### 1.2 Compiler path on the Octane2
+
+MIPSpro 7.4 installed to `/opt/MIPSpro/bin/cc` on the development Octane2.
+`/usr/bin/cc` may also resolve correctly depending on PATH. Use the full path
+in Makefile rules to avoid ambiguity.
+
+```sh
+/opt/MIPSpro/bin/cc -version
+# MIPSpro Compilers: Version 7.4
 ```
 
 ### 1.2 Critical compiler flag notes
@@ -163,5 +177,71 @@ O32 and N32 have different parameter slot sizes (32-bit vs 64-bit in N32). Do no
 | `fnmatch(3)` availability on IRIX 6.2 | Unknown | Implement in compat/ regardless and use always |
 | IRIX 6.2 compiler version | Unknown | Verify with `cc -version` on a 6.2 system when available |
 | IRIS emulator: verified IRIX 5.3 boot | Pending | Test with Indy IRIX 5.3 image |
+| Does `-nostartfiles` drop any crt other than crt1/crtn on IRIX 6.5? | Pending | Verify on Octane2 that only crt1.o and crtn.o are needed |
 
 These items are tracked here. Discoveries go into the appropriate compat/ files or this document.
+
+---
+
+## 9. MIPS-IV Startup Object Issue (Confirmed on Octane2 / IRIX 6.5.30)
+
+**Observed on:** SGI Octane2 / IP30, IRIX64 6.5.30, MIPSpro 7.4.
+
+### What happens
+
+When building with `-n32 -mips3`, the MIPSpro 7.4 driver correctly compiles
+object code to the MIPS-III ISA. However, the final link step picks up the
+system-default startup objects:
+
+```
+/usr/lib32/crt1.o  →  /usr/lib32/mips4/crt1.o  (symlink)
+/usr/lib32/crtn.o  →  /usr/lib32/mips4/crtn.o  (symlink)
+```
+
+This is because `/etc/compiler.defaults` contains:
+```
+-DEFAULT:abi=n32:isa=mips4:proc=r10k
+```
+and the linker resolves startup objects via the generic symlinks regardless
+of the `-mips3` flag. The result is an executable that `file(1)` reports as
+`N32 MIPS-IV` even though user code was compiled to MIPS-III.
+
+Setting `COMPILER_DEFAULTS_PATH` to a custom file does **not** fix this —
+startup object selection bypasses that override.
+
+### Confirmed workaround
+
+Compile source files to object files with `-n32 -mips3`, then link with
+`-nostartfiles` and explicit MIPS-III startup objects:
+
+```sh
+# compile (MIPS-III codegen)
+/opt/MIPSpro/bin/cc -n32 -mips3 -O2 -ansi -c src/daemon/mcpserverd.c \
+    -o build/mips3/mcpserverd.o ...
+
+# link with explicit MIPS-III crt objects
+/opt/MIPSpro/bin/cc -n32 -mips3 -nostartfiles \
+    /usr/lib32/mips3/crt1.o \
+    build/mips3/*.o \
+    /usr/lib32/mips3/crtn.o \
+    -lc -o mcpserverd
+
+file mcpserverd
+# ELF 32-bit MSB executable, MIPS, N32 MIPS-III version 1  ✓
+```
+
+### Impact on the build matrix
+
+| Target | ISA goal | Startup-object issue? | Strategy |
+|---|---|---|---|
+| `irix65` | MIPS-IV | No — symlinks already point to mips4/ | Single `cc` invocation, `-n32 -mips4` |
+| `irix62` | MIPS-III | **Yes** on R10000 build host | Compile to `.o`, link with explicit `mips3/crt1.o` |
+| `irix53` | MIPS-II | No — O32, static, different lib path | Single `cc` invocation, `-o32 -mips2 -static` |
+
+### Do not over-fit to this machine
+
+This behavior is specific to MIPSpro 7.4 systems where the symlinks in
+`/usr/lib32/` point to the native processor's ISA. On an R4000 or R5000 IRIX
+6.5 system the symlinks likely point to `mips3/`, and `-mips3` would work
+without the workaround. The Makefile `irix62` target uses the explicit
+startup-object approach unconditionally so it is correct on any build host.
