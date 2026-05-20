@@ -274,9 +274,10 @@ install: all
 #   inst -f mcpserver-0.1.0-irix65.tardist
 # or drag-and-drop into Software Manager.
 # ---------------------------------------------------------------
-PKG_VERSION = 0.1.0
-TARDIST     = mcpserver-$(PKG_VERSION)-irix65.tardist
-DISTDIR     = /tmp/mcpserver-dist
+PKG_VERSION      = 0.1.0
+TARDIST          = mcpserver-$(PKG_VERSION)-irix65.tardist
+TARDIST_IRIX62   = mcpserver-$(PKG_VERSION)-irix62.tardist
+DISTDIR          = /tmp/mcpserver-dist
 
 tardist: all
 	rm -rf $(DISTDIR) && mkdir $(DISTDIR)
@@ -291,6 +292,27 @@ tardist: all
 	@echo "Created $(TARDIST)"
 	@echo "Install: inst -f $(TARDIST)"
 	@echo "     or: drag into Software Manager"
+
+# ---------------------------------------------------------------
+# Tardist packaging (IRIX 6.2)
+#
+# Build the irix62 binaries first, then package.
+# Requires gendist from the dev.sw.swpkg product.
+#
+#   make irix62-tardist
+# ---------------------------------------------------------------
+irix62-tardist: irix62
+	rm -rf $(DISTDIR) && mkdir $(DISTDIR)
+	sort +4 -6 packaging/irix62/mcpserver.idb > /tmp/mcpserver-idb-sorted
+	gendist -spec packaging/irix62/mcpserver.spec \
+	        -idb /tmp/mcpserver-idb-sorted \
+	        -root . \
+	        -dist $(DISTDIR) \
+	        -nostrip
+	( cd $(DISTDIR) && tar cf - . ) > $(TARDIST_IRIX62)
+	@echo ""
+	@echo "Created $(TARDIST_IRIX62)"
+	@echo "Install on IRIX 6.2: inst -f $(TARDIST_IRIX62)"
 
 # ---------------------------------------------------------------
 # Uninstall
@@ -318,4 +340,4 @@ clean:
 	rm -f *.o
 	rm -rf $(BUILDDIR)
 
-.PHONY: all irix65 irix62 irix62-check irix53 verify-isa install uninstall tardist clean
+.PHONY: all irix65 irix62 irix62-check irix62-tardist irix53 verify-isa install uninstall tardist clean
