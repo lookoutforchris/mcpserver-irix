@@ -1,0 +1,33 @@
+#!/sbin/sh
+#
+# /etc/init.d/mcpserverd
+#
+# IRIX MCP Server daemon init script.
+#
+# Controlled by chkconfig.  Install and enable:
+#   /sbin/chkconfig -f mcpserver on
+# or via the operator CLI after installation:
+#   mcpserver enable
+#
+# Manual operation:
+#   /etc/init.d/mcpserverd start
+#   /etc/init.d/mcpserverd stop
+#
+
+if /sbin/chkconfig mcpserver; then
+    case "$1" in
+    start)
+        echo "Starting mcpserverd"
+        /usr/sbin/mcpserverd
+        ;;
+    stop)
+        echo "Stopping mcpserverd"
+        if [ -f /var/run/mcpserverd.pid ]; then
+            kill -TERM `cat /var/run/mcpserverd.pid`
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {start|stop}"
+        ;;
+    esac
+fi

@@ -187,12 +187,90 @@ verify-isa:
 	@echo "  irix53: MIPS-II O32  (IRIX 5.3 static)"
 
 # ---------------------------------------------------------------
+# Install paths
+# ---------------------------------------------------------------
+INITD_SRC  = scripts/mcpserverd.init
+INITD_DEST = /etc/init.d/mcpserverd
+RC2_LINK   = /etc/rc2.d/S75mcpserverd
+RC0_LINK   = /etc/rc0.d/K15mcpserverd
+CONF_DIR   = /etc/mcpserver
+
+# ---------------------------------------------------------------
 # Install
+#
+# Copies binaries and init script, creates rc symlinks, registers
+# the chkconfig flag (disabled by default).
+#
+# After running make install:
+#   /sbin/chkconfig -f mcpserver on   (enable at boot)
+#   /etc/init.d/mcpserverd start      (start now)
+# or equivalently:
+#   mcpserver enable                  (enable + start in one step)
 # ---------------------------------------------------------------
 install: all
+	@echo "=== Installing binaries ==="
 	cp mcpserverd /usr/sbin/mcpserverd
-	cp mcpserver  /usr/bin/mcpserver
-	chmod 755 /usr/sbin/mcpserverd /usr/bin/mcpserver
+	chmod 755 /usr/sbin/mcpserverd
+	chown root /usr/sbin/mcpserverd
+	chgrp sys  /usr/sbin/mcpserverd
+	cp mcpserver /usr/bin/mcpserver
+	chmod 755 /usr/bin/mcpserver
+	chown root /usr/bin/mcpserver
+	chgrp sys  /usr/bin/mcpserver
+	@echo "=== Installing init script ==="
+	cp $(INITD_SRC) $(INITD_DEST)
+	chmod 755 $(INITD_DEST)
+	chown root $(INITD_DEST)
+	chgrp sys  $(INITD_DEST)
+	@echo "=== Creating rc symlinks ==="
+	@if [ ! -L $(RC2_LINK) ]; then \
+		ln -s ../init.d/mcpserverd $(RC2_LINK); \
+		echo "  created $(RC2_LINK)"; \
+	else \
+		echo "  $(RC2_LINK) already exists"; \
+	fi
+	@if [ ! -L $(RC0_LINK) ]; then \
+		ln -s ../init.d/mcpserverd $(RC0_LINK); \
+		echo "  created $(RC0_LINK)"; \
+	else \
+		echo "  $(RC0_LINK) already exists"; \
+	fi
+	@echo "=== Ensuring config directory exists ==="
+	@if [ ! -d $(CONF_DIR) ]; then \
+		mkdir $(CONF_DIR); \
+		chmod 755 $(CONF_DIR); \
+		chown root $(CONF_DIR); \
+		chgrp sys  $(CONF_DIR); \
+		echo "  created $(CONF_DIR)"; \
+	else \
+		echo "  $(CONF_DIR) already exists"; \
+	fi
+	@echo "=== Registering with chkconfig (disabled) ==="
+	/sbin/chkconfig -f mcpserver off
+	@echo ""
+	@echo "Installation complete.  To enable and start:"
+	@echo "  mcpserver enable"
+	@echo "or:"
+	@echo "  /sbin/chkconfig -f mcpserver on"
+	@echo "  /etc/init.d/mcpserverd start"
+
+# ---------------------------------------------------------------
+# Uninstall
+# ---------------------------------------------------------------
+uninstall:
+	@echo "=== Stopping daemon if running ==="
+	@if [ -f /var/run/mcpserverd.pid ]; then \
+		kill -TERM `cat /var/run/mcpserverd.pid` 2>/dev/null; \
+		echo "  sent SIGTERM"; \
+	fi
+	/sbin/chkconfig -f mcpserver off
+	@echo "=== Removing binaries ==="
+	rm -f /usr/sbin/mcpserverd /usr/bin/mcpserver
+	@echo "=== Removing init script and rc symlinks ==="
+	rm -f $(INITD_DEST) $(RC2_LINK) $(RC0_LINK)
+	@echo "=== Removing chkconfig flag ==="
+	rm -f /var/config/mcpserver
+	@echo "Uninstall complete.  Config files in $(CONF_DIR) were left in place."
 
 # ---------------------------------------------------------------
 # Clean
@@ -202,4 +280,4 @@ clean:
 	rm -f *.o
 	rm -rf $(BUILDDIR)
 
-.PHONY: all irix65 irix62 irix62-check irix53 verify-isa install clean
+.PHONY: all irix65 irix62 irix62-check irix53 verify-isa install uninstall clean

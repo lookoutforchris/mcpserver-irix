@@ -5,8 +5,9 @@
       "command": "ssh",
       "args": [
         "-T",
+        "-o", "BatchMode=yes",
         "root@speed.siliconsurf.net",
-        "/home/chris/src/mcpserver-irix/mcpserver",
+        "/usr/bin/mcpserver",
         "stdio"
       ]
     }
