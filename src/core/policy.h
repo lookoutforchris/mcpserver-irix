@@ -19,7 +19,7 @@
 #define POLICY_DENY_MAX       256
 #define POLICY_EXT_MAX        64
 #define POLICY_NAME_MAX       32
-#define POLICY_CMDS_MAX       16
+#define POLICY_CMDS_MAX       32
 #define POLICY_PATTERN_MAX    256
 
 /*
