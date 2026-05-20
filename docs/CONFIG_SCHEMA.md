@@ -196,22 +196,37 @@ mcpserver restart        ← send SIGHUP to daemon to reload policy
 
 ## 5. Config File Bootstrapping
 
-On a fresh install, neither `projects.json` nor `boundaries.json` exists. The daemon refuses to start without a valid `boundaries.json`. The operator must:
+On a fresh tardist install, the package places default files at:
+
+- `/etc/mcpserver/projects.json` — empty project list (`{"version":1,"projects":[]}`)
+- `/etc/mcpserver/boundaries.json` — empty roots, full shell command allowlist
+
+These defaults are safe: the daemon starts but denies access to all paths until the operator adds at least one project. The standard first-run workflow is:
 
 ```sh
-# Create a minimal projects.json
-cat > /etc/mcpserver/projects.json << 'EOF'
-{"version": 1, "projects": []}
-EOF
-
-# Generate an empty boundaries.json
-mcpserver apply
-
-# Then add projects and apply again
+# Add one or more projects
 mcpserver add myproject /work/myproject --rw
-mcpserver validate
+
+# Preview what the policy will look like
+mcpserver preview
+
+# Write boundaries.json and reload the daemon
 mcpserver apply
-mcpserver start
+
+# Enable at boot and start now
+mcpserver enable
 ```
 
-The tardist package installs a template `projects.json` with a single commented-out example entry and generates an empty `boundaries.json` during the post-install exitop.
+If building from source without using the tardist, create the config directory and defaults manually before starting the daemon:
+
+```sh
+mkdir -p /etc/mcpserver/backup
+echo '{"version": 1, "projects": []}' > /etc/mcpserver/projects.json
+mcpserver add myproject /work/myproject --rw
+mcpserver apply
+mcpserver enable
+```
+
+On upgrades, existing `projects.json` and `boundaries.json` files are preserved
+(`config(suggest)` attribute in the tardist IDB). The new default templates are
+installed alongside as `projects.json.N` and `boundaries.json.N` for reference.

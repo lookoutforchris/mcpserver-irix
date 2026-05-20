@@ -38,7 +38,7 @@ Refer to `docs/ARCHITECTURE.md` for full detail. Summary:
 - **Install paths**: `/usr/sbin/mcpserverd`, `/usr/bin/mcpserver`
 - **Config paths**: `/etc/mcpserver/projects.json`, `/etc/mcpserver/boundaries.json`
 - **Service management**: `/etc/init.d/mcpserverd`, chkconfig flag at `/var/config/mcpserver`
-- **v1 connection model**: One bridge connection at a time (no multiplexing)
+- **v1 connection model**: Fork-per-connection; multiple simultaneous bridge sessions supported
 
 ---
 

@@ -233,7 +233,7 @@ packaging/
 
 - **No public network service.** The daemon does not listen on any TCP port.
 - **No external runtime dependencies.** Statically linked where practical. SGUG-RSE may be used during development but must not be a runtime dependency.
-- **One daemon, one bridge at a time.** v1 does not multiplex concurrent bridge connections.
+- **Multiple concurrent bridge connections supported.** The daemon forks a child process per accepted connection; multiple Claude Code / Codex sessions can connect simultaneously.
 - **Portable C only.** No C++, no Python, no shell for core logic.
 - **ANSI C89 throughout.** Required for IRIX 5.3 ucode compiler compatibility.
 - **Separate binaries per IRIX target.** No single binary is expected to run across all three targets.
