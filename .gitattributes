@@ -16,6 +16,10 @@
 Makefile text eol=lf
 Imakefile text eol=lf
 
+# Packaging files
+*.spec text eol=lf
+*.idb  text eol=lf
+
 # Treat these as true binary — never mangle
 *.o binary
 *.a binary

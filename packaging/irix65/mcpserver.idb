@@ -1,0 +1,11 @@
+
+d 0755 root sys - etc/mcpserver mcpserver.sw.base
+d 0755 root sys - etc/mcpserver/backup mcpserver.sw.base
+
+f 0755 root sys mcpserverd usr/sbin/mcpserverd mcpserver.sw.base nostrip
+f 0755 root sys mcpserver usr/bin/mcpserver mcpserver.sw.base nostrip
+
+f 0644 root sys packaging/irix65/projects.json.default etc/mcpserver/projects.json mcpserver.sw.base config(suggest)
+f 0644 root sys packaging/irix65/boundaries.json.default etc/mcpserver/boundaries.json mcpserver.sw.base config(suggest)
+
+f 0755 root sys scripts/mcpserverd.init etc/init.d/mcpserverd mcpserver.sw.base exitop("/sbin/chkconfig -f mcpserver off; if [ ! -L /etc/rc2.d/S75mcpserverd ]; then ln -s ../init.d/mcpserverd /etc/rc2.d/S75mcpserverd; fi; if [ ! -L /etc/rc0.d/K15mcpserverd ]; then ln -s ../init.d/mcpserverd /etc/rc0.d/K15mcpserverd; fi; echo ''; echo 'MCP Server for IRIX 6.5 installed.'; echo 'Configure projects: mcpserver add <name> <root> --ro'; echo 'Generate policy:    mcpserver apply'; echo 'Enable at boot:     mcpserver enable'; echo ''") removeop("if [ -f /var/run/mcpserverd.pid ]; then kill -TERM \`cat /var/run/mcpserverd.pid\` 2>/dev/null; sleep 1; fi; /sbin/chkconfig -f mcpserver off 2>/dev/null; rm -f /var/config/mcpserver; rm -f /etc/rc2.d/S75mcpserverd /etc/rc0.d/K15mcpserverd")

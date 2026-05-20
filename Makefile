@@ -255,6 +255,35 @@ install: all
 	@echo "  /etc/init.d/mcpserverd start"
 
 # ---------------------------------------------------------------
+# Tardist packaging (IRIX 6.5)
+#
+# Run on the target IRIX system after building (requires gendist
+# from the dev.sw.swpkg product).
+#
+#   make tardist
+#
+# Produces mcpserver-0.1.0-irix65.tardist in the current directory.
+# Install on any IRIX 6.5 system with:
+#   inst -f mcpserver-0.1.0-irix65.tardist
+# or drag-and-drop into Software Manager.
+# ---------------------------------------------------------------
+PKG_VERSION = 0.1.0
+TARDIST     = mcpserver-$(PKG_VERSION)-irix65.tardist
+DISTDIR     = /tmp/mcpserver-dist
+
+tardist: all
+	rm -rf $(DISTDIR) && mkdir $(DISTDIR)
+	gendist -spec packaging/irix65/mcpserver.spec \
+	        -idb packaging/irix65/mcpserver.idb \
+	        -root . \
+	        -dist $(DISTDIR)
+	( cd $(DISTDIR) && tar cf - . ) > $(TARDIST)
+	@echo ""
+	@echo "Created $(TARDIST)"
+	@echo "Install: inst -f $(TARDIST)"
+	@echo "     or: drag into Software Manager"
+
+# ---------------------------------------------------------------
 # Uninstall
 # ---------------------------------------------------------------
 uninstall:
@@ -280,4 +309,4 @@ clean:
 	rm -f *.o
 	rm -rf $(BUILDDIR)
 
-.PHONY: all irix65 irix62 irix62-check irix53 verify-isa install uninstall clean
+.PHONY: all irix65 irix62 irix62-check irix53 verify-isa install uninstall tardist clean
