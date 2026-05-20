@@ -246,7 +246,7 @@ install: all
 		echo "  $(CONF_DIR) already exists"; \
 	fi
 	@echo "=== Registering with chkconfig (disabled) ==="
-	/sbin/chkconfig -f mcpserver off
+	-/sbin/chkconfig -f mcpserver off
 	@echo ""
 	@echo "Installation complete.  To enable and start:"
 	@echo "  mcpserver enable"
@@ -263,7 +263,7 @@ uninstall:
 		kill -TERM `cat /var/run/mcpserverd.pid` 2>/dev/null; \
 		echo "  sent SIGTERM"; \
 	fi
-	/sbin/chkconfig -f mcpserver off
+	-/sbin/chkconfig -f mcpserver off
 	@echo "=== Removing binaries ==="
 	rm -f /usr/sbin/mcpserverd /usr/bin/mcpserver
 	@echo "=== Removing init script and rc symlinks ==="
