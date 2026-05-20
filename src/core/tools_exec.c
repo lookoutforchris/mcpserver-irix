@@ -236,8 +236,11 @@ validate_args(const struct cmd_def *def,
                 *err_msg = "flag not allowed for this command";
                 return 0;
             }
-            /* flags that take a value */
-            if (strcmp(args[i], "-n")        == 0 ||
+            /* flags that take a numeric value.
+             * -n only consumes a number for commands with allow_num_opt set
+             * (head, tail, strings).  For grep, sed, wc the -n flag is
+             * standalone and takes no argument. */
+            if ((strcmp(args[i], "-n") == 0 && def->allow_num_opt) ||
                 strcmp(args[i], "-maxdepth") == 0 ||
                 strcmp(args[i], "-mindepth") == 0) {
                 expect_num = 1;
