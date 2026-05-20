@@ -455,6 +455,138 @@ try {
         "rejected"
     }
 
+    Test-Condition "run_inspect_command rejects unknown command" {
+        $result = Invoke-Tool -Name "run_inspect_command" -Arguments @{
+            command = "sh"
+            args = @("-c", "id")
+        }
+        if ($result.allowed -ne $false) {
+            throw "expected allowed=false, got $($result.allowed)"
+        }
+        "rejected sh"
+    }
+
+    Test-Condition "run_inspect_command echoes args in response" {
+        $result = Invoke-Tool -Name "run_inspect_command" -Arguments @{
+            command = "uname"
+            args = @("-a")
+        }
+        if ($result.error) { throw "error=$($result.error)" }
+        if ($result.exit_code -ne 0) { throw "exit_code=$($result.exit_code)" }
+        if ($result.args -notcontains "-a") {
+            throw "args not echoed: got $($result.args)"
+        }
+        $result.stdout.Trim()
+    }
+
+    Test-Condition "run_inspect_command cat reads file in root" {
+        $result = Invoke-Tool -Name "run_inspect_command" -Arguments @{
+            command = "cat"
+            args = @("$ProjectRoot/README.md")
+        }
+        if ($result.error) { throw "error=$($result.error)" }
+        if ($result.exit_code -ne 0) { throw "exit_code=$($result.exit_code)" }
+        "$($result.stdout.Length) chars"
+    }
+
+    Test-Condition "run_inspect_command grep finds pattern in file" {
+        $result = Invoke-Tool -Name "run_inspect_command" -Arguments @{
+            command = "grep"
+            args = @("-n", "ANSI", "$ProjectRoot/AGENTS.md")
+        }
+        if ($result.error) { throw "error=$($result.error)" }
+        if ($result.exit_code -ne 0) { throw "exit_code=$($result.exit_code)" }
+        "$(@($result.stdout -split '\n' | Where-Object { $_ -ne '' }).Count) match(es)"
+    }
+
+    Test-Condition "run_inspect_command diff compares two files" {
+        $result = Invoke-Tool -Name "run_inspect_command" -Arguments @{
+            command = "diff"
+            args = @("-q", "$ProjectRoot/README.md", "$ProjectRoot/AGENTS.md")
+        }
+        if ($result.allowed -ne $true) { throw "allowed=$($result.allowed)" }
+        if ($result.error -and $result.exit_code -ne 1) {
+            throw "unexpected error=$($result.error)"
+        }
+        "exit_code=$($result.exit_code) (1=files differ, expected)"
+    }
+
+    Test-Condition "run_inspect_command nm inspects binary symbols" {
+        $result = Invoke-Tool -Name "run_inspect_command" -Arguments @{
+            command = "nm"
+            args = @("-u", "$ProjectRoot/mcpserverd")
+        }
+        if ($result.error) { throw "error=$($result.error)" }
+        if ($result.stdout -notmatch "execv") {
+            throw "expected execv in symbol table"
+        }
+        "$(@($result.stdout -split '\n' | Where-Object { $_ -ne '' }).Count) symbols"
+    }
+
+    Test-Condition "run_inspect_command file identifies ELF binary" {
+        $result = Invoke-Tool -Name "run_inspect_command" -Arguments @{
+            command = "file"
+            args = @("$ProjectRoot/mcpserverd")
+        }
+        if ($result.error) { throw "error=$($result.error)" }
+        if ($result.stdout -notmatch "ELF") {
+            throw "expected ELF in output: $($result.stdout)"
+        }
+        $result.stdout.Trim()
+    }
+
+    Test-Condition "run_inspect_command ps lists running processes" {
+        $result = Invoke-Tool -Name "run_inspect_command" -Arguments @{
+            command = "ps"
+            args = @("-e")
+        }
+        if ($result.error) { throw "error=$($result.error)" }
+        if ($result.exit_code -ne 0) { throw "exit_code=$($result.exit_code)" }
+        "$(@($result.stdout -split '\n' | Where-Object { $_ -ne '' }).Count) processes"
+    }
+
+    Test-Condition "run_inspect_command df shows filesystem usage" {
+        $result = Invoke-Tool -Name "run_inspect_command" -Arguments @{
+            command = "df"
+            args = @("-k")
+        }
+        if ($result.error) { throw "error=$($result.error)" }
+        if ($result.exit_code -ne 0) { throw "exit_code=$($result.exit_code)" }
+        ($result.stdout -split '\n' | Where-Object { $_ -ne '' } | Select-Object -Last 1).Trim()
+    }
+
+    Test-Condition "run_inspect_command denies path outside allowed roots" {
+        $result = Invoke-Tool -Name "run_inspect_command" -Arguments @{
+            command = "cat"
+            args = @("/etc/passwd")
+        }
+        if ($result.allowed -ne $false) {
+            throw "expected allowed=false, got $($result.allowed)"
+        }
+        "denied /etc/passwd"
+    }
+
+    Test-Condition "path traversal escape attempt is denied" {
+        $result = Invoke-Tool -Name "path_exists" -Arguments @{
+            path = "$ProjectRoot/../../etc/passwd"
+        }
+        if ($result.allowed -ne $false) {
+            throw "expected allowed=false, got $($result.allowed)"
+        }
+        "denied"
+    }
+
+    Test-Condition "path with redundant traversal stays in root" {
+        $leaf = $ProjectRoot.Split("/")[-1]
+        $result = Invoke-Tool -Name "path_exists" -Arguments @{
+            path = "$ProjectRoot/../$leaf/README.md"
+        }
+        if ($result.allowed -ne $true) {
+            throw "expected allowed=true after canonicalization, got $($result.allowed)"
+        }
+        "allowed: canonicalized correctly"
+    }
+
     $mkdirResult = Invoke-Tool -Name "make_directory" -Arguments @{ path = $testRoot }
     $mkdirOk = $mkdirResult.allowed -eq $true -and (
         $mkdirResult.created -eq $true -or $mkdirResult.error -eq "already exists"
@@ -514,6 +646,87 @@ try {
                 throw "allowed=$($result.allowed), deleted=$($result.deleted), error=$($result.error)"
             }
             "deleted"
+        }
+
+        Test-Condition "write denied for .pem extension (global deny)" {
+            $result = Invoke-Tool -Name "create_text_file" -Arguments @{
+                path    = "$testRoot/secret.pem"
+                content = "fake key material"
+            }
+            if ($result.allowed -ne $false) {
+                throw "expected denied, got allowed=$($result.allowed)"
+            }
+            "denied .pem"
+        }
+
+        Test-Condition "write denied for .o extension (not in allowlist)" {
+            $result = Invoke-Tool -Name "create_text_file" -Arguments @{
+                path    = "$testRoot/object.o"
+                content = "fake object file"
+            }
+            if ($result.allowed -ne $false) {
+                throw "expected denied, got allowed=$($result.allowed)"
+            }
+            "denied .o"
+        }
+
+        Test-Condition "write denied for extensionless name" {
+            $result = Invoke-Tool -Name "create_text_file" -Arguments @{
+                path    = "$testRoot/my_binary"
+                content = "fake executable"
+            }
+            if ($result.allowed -ne $false) {
+                throw "expected denied, got allowed=$($result.allowed)"
+            }
+            "denied no extension"
+        }
+
+        Test-Condition "empty file create and read" {
+            $createResult = Invoke-Tool -Name "create_text_file" -Arguments @{
+                path = "$testRoot/empty.txt"; content = ""
+            }
+            if ($createResult.allowed -ne $true -or $createResult.created -ne $true) {
+                throw "create: allowed=$($createResult.allowed), created=$($createResult.created)"
+            }
+            $readResult = Invoke-Tool -Name "read_text_file" -Arguments @{
+                path = "$testRoot/empty.txt"; start_line = 1; max_lines = 5
+            }
+            Invoke-Tool -Name "delete_text_file" -Arguments @{ path = "$testRoot/empty.txt" } | Out-Null
+            "lines=$($readResult.lines_returned)"
+        }
+
+        Test-Condition "file without final newline reads correctly" {
+            $createResult = Invoke-Tool -Name "create_text_file" -Arguments @{
+                path = "$testRoot/nonewline.txt"; content = "no newline here"
+            }
+            if ($createResult.allowed -ne $true -or $createResult.created -ne $true) {
+                throw "create: allowed=$($createResult.allowed)"
+            }
+            $readResult = Invoke-Tool -Name "read_text_file" -Arguments @{
+                path = "$testRoot/nonewline.txt"; start_line = 1; max_lines = 5
+            }
+            Invoke-Tool -Name "delete_text_file" -Arguments @{ path = "$testRoot/nonewline.txt" } | Out-Null
+            "content='$($readResult.content.Trim())'"
+        }
+
+        Test-Condition "run_inspect_command grep searches test fixture" {
+            $createResult = Invoke-Tool -Name "create_text_file" -Arguments @{
+                path    = "$testRoot/greptest.txt"
+                content = "line one`nMCP-GREP-TARGET found here`nline three`n"
+            }
+            if ($createResult.allowed -ne $true -or $createResult.created -ne $true) {
+                throw "create fixture: allowed=$($createResult.allowed)"
+            }
+            $result = Invoke-Tool -Name "run_inspect_command" -Arguments @{
+                command = "grep"
+                args    = @("-n", "MCP-GREP-TARGET", "$testRoot/greptest.txt")
+            }
+            Invoke-Tool -Name "delete_text_file" -Arguments @{ path = "$testRoot/greptest.txt" } | Out-Null
+            if ($result.error) { throw "error=$($result.error)" }
+            if ($result.stdout -notmatch "MCP-GREP-TARGET") {
+                throw "pattern not found in output"
+            }
+            $result.stdout.Trim()
         }
     } else {
         Add-Result -Status "SKIP" -Name "write tool sequence" -Detail "make_directory denied or unavailable; root is likely read-only"

@@ -131,6 +131,33 @@ static const struct cmd_def CMD_TABLE[] = {
 /* Characters that must never appear in any argument */
 static const char *BAD_CHARS = "|&;><\n\r$`()";
 
+/*
+ * build_args_json - serialise args array as a JSON string array.
+ * Writes e.g. ["arg1","arg2"] into buf.
+ */
+static void
+build_args_json(const char **args, int nargs, char *buf, int bufsz)
+{
+    int    i;
+    int    pos = 0;
+    char   esc[512];
+    size_t elen;
+
+    buf[pos++] = '[';
+    for (i = 0; i < nargs && pos < bufsz - 4; i++) {
+        if (i > 0) buf[pos++] = ',';
+        buf[pos++] = '"';
+        json_escape(args[i] ? args[i] : "", esc, sizeof(esc));
+        elen = strlen(esc);
+        if (pos + (int)elen + 2 >= bufsz) break;
+        memcpy(buf + pos, esc, elen);
+        pos += (int)elen;
+        buf[pos++] = '"';
+    }
+    buf[pos++] = ']';
+    buf[pos]   = '\0';
+}
+
 static int
 arg_is_safe(const char *arg)
 {
@@ -350,6 +377,7 @@ tool_run_inspect_command(const struct policy *p,
     static char out_buf[MCP_CONTENT_MAX + 1];
     static char eout[MCP_CONTENT_MAX * 2 + 1];
     static char ecmd[64];
+    static char eargs[4096];
     const char *err_msg = NULL;
     const char *exec_argv[EXEC_ARGS_MAX + 2]; /* +2: name + NULL */
     int         nargs = 0;
@@ -360,6 +388,12 @@ tool_run_inspect_command(const struct policy *p,
     const struct cmd_def *def = NULL;
 
     json_escape(command, ecmd, sizeof(ecmd));
+
+    /* count args and build JSON representation up front */
+    if (args) {
+        while (args[nargs] && nargs < EXEC_ARGS_MAX) nargs++;
+    }
+    build_args_json(args, nargs, eargs, sizeof(eargs));
 
     /* look up command in table */
     for (i = 0; CMD_TABLE[i].name; i++) {
@@ -372,14 +406,10 @@ tool_run_inspect_command(const struct policy *p,
     if (!def) {
         return snprintf(resp_buf, (size_t)resp_bufsz,
                         "{\"allowed\":false,\"command\":\"%s\","
-                        "\"args\":[],\"stdout\":\"\",\"stderr\":\"\","
+                        "\"args\":%s,\"stdout\":\"\",\"stderr\":\"\","
                         "\"exit_code\":-1,\"truncated\":false,"
-                        "\"error\":\"command not in allowed list\"}", ecmd);
-    }
-
-    /* count args */
-    if (args) {
-        while (args[nargs] && nargs < EXEC_ARGS_MAX) nargs++;
+                        "\"error\":\"command not in allowed list\"}",
+                        ecmd, eargs);
     }
 
     /* validate arguments */
@@ -388,9 +418,9 @@ tool_run_inspect_command(const struct policy *p,
         json_escape(err_msg, eerr, sizeof(eerr));
         return snprintf(resp_buf, (size_t)resp_bufsz,
                         "{\"allowed\":false,\"command\":\"%s\","
-                        "\"args\":[],\"stdout\":\"\",\"stderr\":\"\","
+                        "\"args\":%s,\"stdout\":\"\",\"stderr\":\"\","
                         "\"exit_code\":-1,\"truncated\":false,"
-                        "\"error\":\"%s\"}", ecmd, eerr);
+                        "\"error\":\"%s\"}", ecmd, eargs, eerr);
     }
 
     /* build exec argv: argv[0] = command name, then args, then NULL */
@@ -411,25 +441,25 @@ tool_run_inspect_command(const struct policy *p,
     if (timed_out) {
         return snprintf(resp_buf, (size_t)resp_bufsz,
                         "{\"allowed\":true,\"command\":\"%s\","
-                        "\"args\":[],\"stdout\":\"%s\",\"stderr\":\"\","
+                        "\"args\":%s,\"stdout\":\"%s\",\"stderr\":\"\","
                         "\"exit_code\":-1,\"truncated\":%s,"
                         "\"error\":\"command timed out\"}",
-                        ecmd, eout, truncated ? "true" : "false");
+                        ecmd, eargs, eout, truncated ? "true" : "false");
     }
 
     if (exit_code < 0) {
         return snprintf(resp_buf, (size_t)resp_bufsz,
                         "{\"allowed\":true,\"command\":\"%s\","
-                        "\"args\":[],\"stdout\":\"\",\"stderr\":\"\","
+                        "\"args\":%s,\"stdout\":\"\",\"stderr\":\"\","
                         "\"exit_code\":-1,\"truncated\":false,"
-                        "\"error\":\"exec failed\"}", ecmd);
+                        "\"error\":\"exec failed\"}", ecmd, eargs);
     }
 
     return snprintf(resp_buf, (size_t)resp_bufsz,
                     "{\"allowed\":true,\"command\":\"%s\","
-                    "\"args\":[],\"stdout\":\"%s\",\"stderr\":\"\","
+                    "\"args\":%s,\"stdout\":\"%s\",\"stderr\":\"\","
                     "\"exit_code\":%d,\"truncated\":%s,"
                     "\"error\":null}",
-                    ecmd, eout, exit_code,
+                    ecmd, eargs, eout, exit_code,
                     truncated ? "true" : "false");
 }

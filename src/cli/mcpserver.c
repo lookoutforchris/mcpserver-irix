@@ -513,15 +513,107 @@ cmd_remove(int argc, char **argv)
 static int
 cmd_validate(void)
 {
-    struct policy p;
+    struct project_list pl;
+    struct policy       p;
+    static char         newbuf[BOUNDARIES_BUFSZ];
+    const char         *tmp = "/tmp/mcpserver-validate.json";
+    int                 errors = 0;
+    int                 i;
+    int                 j;
+    FILE               *f;
+    const struct project_entry *e;
+
     printf("Validating %s ...\n", PROJECTS_PATH);
-    /* TODO: validate projects.json structure, then generate and check policy */
-    printf("Validating boundaries...\n");
-    if (policy_load(BOUNDARIES_PATH, &p) != 0) {
-        fprintf(stderr, "mcpserver validate: boundaries.json is invalid\n");
+
+    if (projects_load(&pl) != 0) {
+        fprintf(stderr, "  ERROR: cannot read or parse %s\n", PROJECTS_PATH);
         return 1;
     }
-    printf("OK\n");
+    printf("  %d project(s) found\n", pl.count);
+
+    /* duplicate name check */
+    for (i = 0; i < pl.count; i++) {
+        for (j = i + 1; j < pl.count; j++) {
+            if (strcmp(pl.entries[i].name, pl.entries[j].name) == 0) {
+                fprintf(stderr, "  ERROR: duplicate project name '%s'\n",
+                        pl.entries[i].name);
+                errors++;
+            }
+        }
+    }
+
+    /* duplicate root check */
+    for (i = 0; i < pl.count; i++) {
+        for (j = i + 1; j < pl.count; j++) {
+            if (strcmp(pl.entries[i].root, pl.entries[j].root) == 0) {
+                fprintf(stderr, "  ERROR: duplicate root '%s'\n",
+                        pl.entries[i].root);
+                errors++;
+            }
+        }
+    }
+
+    /* per-project checks */
+    for (i = 0; i < pl.count; i++) {
+        e = &pl.entries[i];
+
+        if (!e->name[0]) {
+            fprintf(stderr, "  ERROR: project %d has empty name\n", i + 1);
+            errors++;
+        }
+
+        if (e->root[0] != '/') {
+            fprintf(stderr, "  ERROR: project '%s': root must be absolute: '%s'\n",
+                    e->name, e->root);
+            errors++;
+        }
+
+        for (j = 0; j < e->deny_count; j++) {
+            if (e->deny[j][0] == '/') {
+                fprintf(stderr,
+                        "  ERROR: project '%s': deny pattern must be relative: '%s'\n",
+                        e->name, e->deny[j]);
+                errors++;
+            }
+            if (strstr(e->deny[j], "..") != NULL) {
+                fprintf(stderr,
+                        "  ERROR: project '%s': deny pattern contains '..': '%s'\n",
+                        e->name, e->deny[j]);
+                errors++;
+            }
+        }
+    }
+
+    if (errors > 0) {
+        fprintf(stderr, "%d error(s) in %s — run 'mcpserver show' for details.\n",
+                errors, PROJECTS_PATH);
+        return 1;
+    }
+
+    /* generate policy and verify it loads cleanly */
+    printf("Validating generated policy...\n");
+    if (boundaries_generate(&pl, newbuf, sizeof(newbuf)) != 0) {
+        fprintf(stderr, "  ERROR: policy generation failed\n");
+        return 1;
+    }
+
+    f = fopen(tmp, "w");
+    if (!f) {
+        fprintf(stderr, "  ERROR: cannot write temp file\n");
+        return 1;
+    }
+    fputs(newbuf, f);
+    fclose(f);
+
+    if (policy_load(tmp, &p) != 0) {
+        unlink(tmp);
+        fprintf(stderr, "  ERROR: generated policy is not loadable\n");
+        return 1;
+    }
+    unlink(tmp);
+
+    printf("OK: %d project(s), %d rw root(s), %d ro root(s), %d cmd(s)\n",
+           pl.count, p.rw_count, p.ro_count, p.cmd_count);
     return 0;
 }
 
