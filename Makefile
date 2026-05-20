@@ -114,6 +114,13 @@ LIB32        = /usr/lib32
 CRT1_MIPS3   = $(LIB32)/mips3/crt1.o
 CRTN_MIPS3   = $(LIB32)/mips3/crtn.o
 CFLAGS_MIPS3 = -n32 -mips3 -O2 -ansi -fullwarn -D_SGI_SOURCE -woff 1429
+#
+# The cc driver (MIPSpro 7.4) inserts /usr/lib32/crt1.o (MIPS-IV) even when
+# -nostartfiles is given, overriding the explicit mips3/crt1.o we provide.
+# Invoking ld32 directly bypasses the driver and produces a true MIPS-III ELF.
+#
+LD32         = /usr/lib32/cmplrs/ld32
+LDFLAGS_MIPS3 = -n32 -mips3 -call_shared
 
 irix62: irix62-check
 	@mkdir -p $(BUILDDIR)/mips3/d $(BUILDDIR)/mips3/c
@@ -123,24 +130,24 @@ irix62: irix62-check
 		echo "  cc $$src"; \
 		$(CC) $(CFLAGS_MIPS3) $(INCLUDES) -c $$src -o $$obj || exit 1; \
 	done
-	@echo "=== Linking mcpserverd (N32 MIPS-III, explicit startup objects) ==="
-	$(CC) -n32 -mips3 -nostartfiles \
+	@echo "=== Linking mcpserverd (N32 MIPS-III, direct ld32) ==="
+	$(LD32) $(LDFLAGS_MIPS3) -o mcpserverd \
 		$(CRT1_MIPS3) \
 		$(BUILDDIR)/mips3/d/*.o \
 		$(CRTN_MIPS3) \
-		-lc -o mcpserverd
+		-lc
 	@echo "=== Compiling CLI sources (N32 MIPS-III) ==="
 	@for src in $(CLI_ALL); do \
 		obj="$(BUILDDIR)/mips3/c/`basename $$src .c`.o"; \
 		echo "  cc $$src"; \
 		$(CC) $(CFLAGS_MIPS3) $(INCLUDES) -c $$src -o $$obj || exit 1; \
 	done
-	@echo "=== Linking mcpserver (N32 MIPS-III, explicit startup objects) ==="
-	$(CC) -n32 -mips3 -nostartfiles \
+	@echo "=== Linking mcpserver (N32 MIPS-III, direct ld32) ==="
+	$(LD32) $(LDFLAGS_MIPS3) -o mcpserver \
 		$(CRT1_MIPS3) \
 		$(BUILDDIR)/mips3/c/*.o \
 		$(CRTN_MIPS3) \
-		-lc -o mcpserver
+		-lc
 	@echo "=== irix62 build complete. Run: make verify-isa ==="
 
 irix62-check:
