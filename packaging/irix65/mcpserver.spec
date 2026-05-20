@@ -7,6 +7,6 @@ product mcpserver
         subsystem base
             id "MCP Server for IRIX 6.5"
             exp "mcpserver.sw.base"
-        endsubsystem
+        endsubsys
     endimage
 endproduct
