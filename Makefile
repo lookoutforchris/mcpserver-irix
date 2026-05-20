@@ -273,11 +273,12 @@ DISTDIR     = /tmp/mcpserver-dist
 
 tardist: all
 	rm -rf $(DISTDIR) && mkdir $(DISTDIR)
-	sort +4 -6 packaging/irix65/mcpserver.idb > $(DISTDIR)/mcpserver-sorted.idb
+	sort +4 -6 packaging/irix65/mcpserver.idb > /tmp/mcpserver-idb-sorted
 	gendist -spec packaging/irix65/mcpserver.spec \
-	        -idb $(DISTDIR)/mcpserver-sorted.idb \
+	        -idb /tmp/mcpserver-idb-sorted \
 	        -root . \
-	        -dist $(DISTDIR)
+	        -dist $(DISTDIR) \
+	        -nostrip
 	( cd $(DISTDIR) && tar cf - . ) > $(TARDIST)
 	@echo ""
 	@echo "Created $(TARDIST)"
