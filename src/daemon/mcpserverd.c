@@ -215,7 +215,19 @@ main(int argc, char *argv[])
         }
 
         if (child == 0) {
-            /* child: close the listening socket, handle this client */
+            /* child: close the listening socket, handle this client.
+             * Reset SIGCHLD to SIG_DFL so capture_command's waitpid()
+             * works correctly.  The parent's sig_chld reaper is only
+             * needed to reap these connection-handler children; if the
+             * handler is inherited here it will steal the exit status of
+             * any grandchild (command exec) before capture_command's own
+             * waitpid() runs, causing ECHILD which we misread as timeout. */
+            struct sigaction sa;
+            memset(&sa, 0, sizeof(sa));
+            sigemptyset(&sa.sa_mask);
+            sa.sa_handler = SIG_DFL;
+            sigaction(SIGCHLD, &sa, NULL);
+
             close(listen_fd);
             handle_connection(client_fd, &p);
             exit(0);

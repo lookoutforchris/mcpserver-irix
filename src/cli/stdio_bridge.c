@@ -113,9 +113,11 @@ bridge_run(void)
     int  stdin_fd;
     char line[JSON_MSG_MAX];
     char resp[JSON_MSG_MAX];
+    char method[JSON_METHOD_MAX];
     int  n;
     int  rn;
     int  ready;
+    int  is_notif;
 
     daemon_fd = connect_to_daemon();
     if (daemon_fd < 0)
@@ -142,12 +144,20 @@ bridge_run(void)
         n = (int)strlen(line);
         if (n == 0) continue;
 
+        /* detect JSON-RPC notifications (no response expected from daemon) */
+        method[0] = '\0';
+        json_get_string(line, "method", method, sizeof(method));
+        is_notif = (strncmp(method, "notifications/", 14) == 0);
+
         /* forward to daemon */
         if (ipc_write_all(daemon_fd, line, n) < 0) {
             fprintf(stderr, "mcpserver stdio: write to daemon failed: %s\n",
                     strerror(errno));
             break;
         }
+
+        /* notifications produce no response — go straight back to reading stdin */
+        if (is_notif) continue;
 
         /* wait for daemon response, but watch stdin for disconnect */
         ready = wait_for_daemon(daemon_fd, stdin_fd);
