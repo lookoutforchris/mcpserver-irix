@@ -163,17 +163,25 @@ irix62-check:
 	fi
 
 # ---------------------------------------------------------------
-# IRIX 5.3: O32 MIPS-II, statically linked
+# IRIX 5.3: O32 MIPS-II
 #
-# Build on an IRIX 5.3 system with IDO, or cross-compile on 6.x
-# with -o32. -ansi is required (ucode cc defaults to K&R C).
-# Static linking avoids libc version dependency across IRIX releases.
+# Preferred build environment: a real IRIX 5.3 system with the IDO
+# ucode compiler and -static to avoid libc version dependency.
+#
+# Cross-compile on IRIX 6.x (MIPSpro 7.4):
+#   SGI_ABI=-o32 forces the compiler to search /usr/lib (O32) instead
+#   of /usr/lib32 (N32).  MIPSpro 7.4 does not provide non-PIC O32
+#   startup objects, so full static linking is not possible here;
+#   the binary links dynamically against the O32 libc.
+#   Use this for compatibility testing; IDO+static is the release target.
 # ---------------------------------------------------------------
 irix53:
-	$(CC) -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE -static \
+	SGI_ABI=-o32 $(CC) -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE \
 		$(INCLUDES) -o mcpserverd $(DAEMON_ALL)
-	$(CC) -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE -static \
+	SGI_ABI=-o32 $(CC) -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE \
 		$(INCLUDES) -o mcpserver $(CLI_ALL)
+	@echo "NOTE: Cross-compiled O32 MIPS-II (dynamically linked)."
+	@echo "      For release, build on IRIX 5.3 with IDO and -non_shared."
 
 # ---------------------------------------------------------------
 # ISA verification
