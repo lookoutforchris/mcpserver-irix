@@ -16,7 +16,7 @@
     "deny_read_globs": []
   },
   "shell_rules": {
-    "allowed_commands": ["pwd","ls","find","cat","grep","head","tail","sed","wc","stat"],
+    "allowed_commands": ["pwd","ls","find","cat","grep","head","tail","sed","wc","stat","diff","nm","file","size","strings","uname","ps","df"],
     "allow_shell": false,
     "allow_pipes": false,
     "allow_redirects": false,

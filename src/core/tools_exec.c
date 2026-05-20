@@ -93,6 +93,38 @@ static const struct cmd_def CMD_TABLE[] = {
       { NULL },
       1, 0 },
 
+    { "diff",    "/usr/bin/diff",
+      { "-u", "-c", "-i", "-w", "-b", "-r", "-q", NULL },
+      1, 0 },
+
+    { "nm",      "/usr/bin/nm",
+      { "-p", "-u", "-g", "-n", "-v", NULL },
+      1, 0 },
+
+    { "file",    "/usr/bin/file",
+      { "-b", NULL },
+      1, 0 },
+
+    { "size",    "/usr/bin/size",
+      { NULL },
+      1, 0 },
+
+    { "strings", "/usr/bin/strings",
+      { "-n", NULL },
+      1, 1 },
+
+    { "uname",   "/bin/uname",
+      { "-a", "-s", "-r", "-m", "-p", "-n", "-v", NULL },
+      0, 0 },
+
+    { "ps",      "/sbin/ps",
+      { "-e", "-a", "-f", "-l", "-u", NULL },
+      0, 0 },
+
+    { "df",      "/bin/df",
+      { "-k", "-l", "-t", NULL },
+      0, 0 },
+
     { NULL, NULL, { NULL }, 0, 0 }
 };
 
@@ -185,7 +217,8 @@ validate_args(const struct cmd_def *def,
             }
             if (strcmp(args[i], "-name")  == 0 ||
                 strcmp(args[i], "-iname") == 0 ||
-                strcmp(args[i], "-type")  == 0) {
+                strcmp(args[i], "-type")  == 0 ||
+                strcmp(args[i], "-u")     == 0) {
                 expect_str = 1;
             }
         } else {

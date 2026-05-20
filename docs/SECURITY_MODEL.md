@@ -83,6 +83,14 @@ This risk is documented as a known limitation. The primary threat model is an au
 | `sed` | `-n N[,M]p` form only (line range print); one file path | Yes |
 | `wc` | `-l`, `-c`, `-w`, `-m`; file paths | Yes |
 | `stat` | File paths only, no flags | Yes |
+| `diff` | `-u`, `-c`, `-i`, `-w`, `-b`, `-r`, `-q`; two file/dir paths | Yes |
+| `nm` | `-p`, `-u`, `-g`, `-n`, `-v`; object file paths | Yes |
+| `file` | `-b`; file paths | Yes |
+| `size` | File paths only, no flags | Yes |
+| `strings` | `-n N`; file paths | Yes |
+| `uname` | `-a`, `-s`, `-r`, `-m`, `-p`, `-n`, `-v`; no path args | N/A |
+| `ps` | `-e`, `-a`, `-f`, `-l`, `-u USERNAME`; no path args | N/A |
+| `df` | `-k`, `-l`, `-t`; no path args | N/A |
 
 ### 4.2 Argument validation rules
 
