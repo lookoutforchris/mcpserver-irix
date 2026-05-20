@@ -177,9 +177,9 @@ irix62-check:
 # ---------------------------------------------------------------
 irix53:
 	SGI_ABI=-o32 $(CC) -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE \
-		-woff 1429 $(INCLUDES) -o mcpserverd $(DAEMON_ALL)
+		$(INCLUDES) -o mcpserverd $(DAEMON_ALL)
 	SGI_ABI=-o32 $(CC) -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE \
-		-woff 1429 $(INCLUDES) -o mcpserver $(CLI_ALL)
+		$(INCLUDES) -o mcpserver $(CLI_ALL)
 	@echo "NOTE: Cross-compiled O32 MIPS-II (dynamically linked)."
 	@echo "      For release, build on IRIX 5.3 with IDO and -non_shared."
 
@@ -285,6 +285,7 @@ install: all
 PKG_VERSION      = 0.1.0
 TARDIST          = mcpserver-$(PKG_VERSION)-irix65.tardist
 TARDIST_IRIX62   = mcpserver-$(PKG_VERSION)-irix62.tardist
+TARDIST_IRIX53   = mcpserver-$(PKG_VERSION)-irix53.tardist
 DISTDIR          = /tmp/mcpserver-dist
 
 tardist: all
@@ -323,6 +324,27 @@ irix62-tardist: irix62
 	@echo "Install on IRIX 6.2: inst -f $(TARDIST_IRIX62)"
 
 # ---------------------------------------------------------------
+# Tardist packaging (IRIX 5.3)
+#
+# Cross-compiles O32 MIPS-II on a 6.x host, then packages.
+# For a release-quality static build, build on IRIX 5.3 with IDO.
+#
+#   make irix53-tardist
+# ---------------------------------------------------------------
+irix53-tardist: irix53
+	rm -rf $(DISTDIR) && mkdir $(DISTDIR)
+	sort +4 -6 packaging/irix53/mcpserver.idb > /tmp/mcpserver-idb-sorted
+	gendist -spec packaging/irix53/mcpserver.spec \
+	        -idb /tmp/mcpserver-idb-sorted \
+	        -root . \
+	        -dist $(DISTDIR) \
+	        -nostrip
+	( cd $(DISTDIR) && tar cf - . ) > $(TARDIST_IRIX53)
+	@echo ""
+	@echo "Created $(TARDIST_IRIX53)"
+	@echo "Install on IRIX 5.3: inst -f $(TARDIST_IRIX53)"
+
+# ---------------------------------------------------------------
 # Uninstall
 # ---------------------------------------------------------------
 uninstall:
@@ -348,4 +370,4 @@ clean:
 	rm -f *.o
 	rm -rf $(BUILDDIR)
 
-.PHONY: all irix65 irix62 irix62-check irix62-tardist irix53 verify-isa install uninstall tardist clean
+.PHONY: all irix65 irix62 irix62-check irix62-tardist irix53 irix53-tardist verify-isa install uninstall tardist clean

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "generated_from": "/etc/mcpserver/projects.json",
+  "generated_at": "1970-01-01T00:00:00",
+  "read_write_roots": [],
+  "read_only_roots": [],
+  "deny_overrides": [],
+  "write_rules": {
+    "allow_create_extensions": [".md",".txt",".json",".c",".h",".cc",".cpp",".s",".S",".sh",".mk"],
+    "allow_create_names": ["Makefile","Imakefile","GNUmakefile"],
+    "allow_replace_extensions": [".md",".txt",".json",".c",".h",".cc",".cpp",".s",".S",".sh",".mk"],
+    "allow_replace_names": ["Makefile","Imakefile","GNUmakefile"],
+    "deny_write_globs": []
+  },
+  "read_rules": {
+    "deny_read_globs": []
+  },
+  "shell_rules": {
+    "allowed_commands": ["pwd","ls","find","cat","grep","head","tail","sed","wc","stat","diff","nm","file","size","strings","uname","ps","df"],
+    "allow_shell": false,
+    "allow_pipes": false,
+    "allow_redirects": false,
+    "allow_glob_expansion": false
+  }
+}
