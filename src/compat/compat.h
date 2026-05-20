@@ -4,14 +4,22 @@
  * Provides int8_t/uint32_t etc. and declarations for mcp_realpath()
  * and mcp_fnmatch(), which replace libc functions absent on IRIX 5.3.
  *
- * Integer type strategy:
- *   MIPSpro (_COMPILER_VERSION defined): <inttypes.h> is available on
- *   IRIX 6.x and provides all intN_t types. Use it to avoid cc-1275
- *   "typedef already declared" warnings under -ansi -fullwarn.
+ * Integer type strategy — three cases:
  *
- *   IDO ucode compiler (IRIX 5.3, no _COMPILER_VERSION): define types
- *   manually. int64_t/uint64_t are omitted because long long is not
- *   available in strict C89 on the IDO compiler.
+ *   1. MIPSpro N32/N64 (_COMPILER_VERSION defined):
+ *      <inttypes.h> is available and provides all intN_t types. Include
+ *      it to avoid cc-1275 redefinition warnings under -ansi -fullwarn.
+ *
+ *   2. MIPSpro O32 cross-compile on IRIX 6.x (-o32 -ansi suppresses
+ *      _COMPILER_VERSION, but _MIPS_SIM is still defined):
+ *      <sys/types.h> on IRIX 6.x already defines int8_t through uint32_t.
+ *      No additional typedefs are needed; defining them here causes errors.
+ *
+ *   3. IDO ucode compiler on IRIX 5.3 (neither _COMPILER_VERSION nor
+ *      _MIPS_SIM is defined):
+ *      <sys/types.h> on IRIX 5.3 does not provide intN_t types. Define
+ *      them manually. int64_t/uint64_t are omitted — long long is not
+ *      available in strict C89 on the IDO compiler.
  *
  * Include this header before any other project header.
  */
@@ -22,19 +30,15 @@
 #include <sys/types.h>  /* size_t, ssize_t, pid_t */
 
 #if defined(_COMPILER_VERSION)
-/*
- * MIPSpro on IRIX 6.x. <sys/types.h> already defines int8_t through
- * uint32_t. <inttypes.h> provides the full set including int64_t.
- * Using it avoids cc-1275 redefinition warnings.
- */
+/* Case 1: MIPSpro N32/N64 on IRIX 6.x */
 #include <inttypes.h>
 
+#elif defined(_MIPS_SIM)
+/* Case 2: MIPSpro O32 cross-compile on IRIX 6.x.
+ * <sys/types.h> already provides int8_t...uint32_t. */
+
 #else
-/*
- * IDO ucode compiler on IRIX 5.3.
- * Define the subset we need manually. long long is a C99 extension not
- * guaranteed on IDO; int64_t/uint64_t are intentionally omitted here.
- */
+/* Case 3: IDO ucode compiler on IRIX 5.3. */
 typedef signed   char        int8_t;
 typedef unsigned char        uint8_t;
 typedef signed   short       int16_t;
