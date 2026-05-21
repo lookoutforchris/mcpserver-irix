@@ -186,30 +186,37 @@ irix53:
 # ---------------------------------------------------------------
 # IRIX 5.3 native build — run on a real IRIX 5.3 system with IDO.
 #
-# IRIX 5.3 make runs recipes under csh, which does not support the
-# VAR=value command inline syntax used by the irix53 target above.
-# This target avoids that by using plain cc (IDO default) and
-# adding -non_shared for fully static binaries.
+# Uses SHELL=/bin/sh to avoid csh command-line length limits and
+# csh VAR=value syntax restrictions. Compiles each file individually
+# to keep recipe lines short, then links from .o files.
 #
 #   make irix53-native
 # ---------------------------------------------------------------
 CFLAGS_IDO = -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE -D_POSIX_SOURCE -D_BSD_TYPES
 
+irix53-native: SHELL=/bin/sh
 irix53-native:
 	cc $(CFLAGS_IDO) $(INCLUDES) -c src/compat/snprintf.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -non_shared -o mcpserverd \
-		src/compat/realpath.c src/compat/fnmatch.c snprintf.o \
-		src/core/json.c src/core/policy.c src/core/protocol.c \
-		src/core/tools_fs.c src/core/tools_text.c \
-		src/core/tools_write.c src/core/tools_exec.c \
-		src/daemon/ipc.c src/daemon/mcpserverd.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -non_shared -o mcpserver \
-		src/compat/realpath.c src/compat/fnmatch.c snprintf.o \
-		src/core/json.c src/core/policy.c src/core/protocol.c \
-		src/core/tools_fs.c src/core/tools_text.c \
-		src/core/tools_write.c src/core/tools_exec.c \
-		src/daemon/ipc.c src/cli/stdio_bridge.c src/cli/mcpserver.c
-	@echo "=== irix53-native build complete (static O32 MIPS-II) ==="
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/compat/realpath.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/compat/fnmatch.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/json.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/policy.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/protocol.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_fs.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_text.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_write.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_exec.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/daemon/ipc.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/daemon/mcpserverd.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/cli/stdio_bridge.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/cli/mcpserver.c
+	cc -o32 -o mcpserverd snprintf.o realpath.o fnmatch.o \
+		json.o policy.o protocol.o tools_fs.o tools_text.o \
+		tools_write.o tools_exec.o ipc.o mcpserverd.o
+	cc -o32 -o mcpserver snprintf.o realpath.o fnmatch.o \
+		json.o policy.o protocol.o tools_fs.o tools_text.o \
+		tools_write.o tools_exec.o ipc.o stdio_bridge.o mcpserver.o
+	@echo "=== irix53-native build complete ==="
 
 # ---------------------------------------------------------------
 # ISA verification
