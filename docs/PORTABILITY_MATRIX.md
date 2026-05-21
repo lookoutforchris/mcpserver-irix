@@ -111,6 +111,7 @@ All confirmed from IRIX 5.0 Programmer's Reference Manual (007-0602-050, 1990) a
 | `unlink()` | ✓ | ✓ | ✓ | Required before `bind()` on socket path |
 | `realpath()` | **✗** | ? | ✓ | Not in 5.0 docs — implement in compat/ |
 | `fnmatch()` | **✗** | ? | ✓ | Not in 5.0 docs — implement in compat/ |
+| `snprintf()` | **✗** | ? | ✓ | Not in IRIX 5.3 libc — implement in compat/snprintf.c |
 | `<stdint.h>` | **✗** | ? | ✓ | Not on 5.3 — define types in compat.h |
 | `EWOULDBLOCK` | = `EAGAIN` | = `EAGAIN` | = `EAGAIN` | Same value; check both |
 
@@ -122,6 +123,23 @@ All confirmed from IRIX 5.0 Programmer's Reference Manual (007-0602-050, 1990) a
 - **`sockaddr_un` bind length**: Use `strlen(addr.sun_path) + sizeof(addr.sun_family)` — null bytes are not counted.
 - **Default C mode on 5.3**: K&R, not ANSI. Always compile with `-ansi`.
 - **Virtual swap**: Do not speculatively allocate memory to probe availability. IRIX may use deferred memory allocation.
+
+### 5.2 Required feature-test macros on IRIX 5.3 IDO (confirmed on real hardware)
+
+These macros must be defined when compiling with `-ansi` on IRIX 5.3 IDO to expose types and functions needed by mcpserver:
+
+| Macro | Why needed |
+|---|---|
+| `-D_POSIX_SOURCE` | Exposes `sigset_t` and related POSIX signal types hidden by `-ansi` |
+| `-D_BSD_TYPES` | Exposes `struct timeval` in `<sys/time.h>`, required by `select()` |
+| `-D_SGI_SOURCE` | Exposes SGI-specific extensions; also required by IRIX 6.x builds |
+
+### 5.3 IRIX 5.3 build environment constraints (confirmed on real hardware)
+
+- **`make` uses csh for recipes**: IRIX 5.3 `make` runs recipe lines under `/bin/csh`. The `VAR=value command` inline environment variable prefix is not supported. Use `setenv VAR value` before invoking `make`, or write targets that do not rely on inline env vars.
+- **csh command-line length limit**: IRIX 5.3 csh truncates very long command lines. Break single-file compilations into groups; do not attempt to compile all source files in one command.
+- **`snprintf` missing**: Not present in IRIX 5.3 libc. The `src/compat/snprintf.c` implementation uses `vsprintf` with a large intermediate buffer and must be compiled and linked for all IRIX 5.3 targets.
+- **`struct timeval` requires `-D_BSD_TYPES`**: In strict ANSI mode, `<sys/time.h>` guards `struct timeval` behind `_BSD_TYPES`. Adding `-D_POSIX_SOURCE` alone is insufficient.
 
 ---
 
