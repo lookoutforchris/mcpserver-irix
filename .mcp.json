@@ -10,6 +10,11 @@
         "/usr/bin/mcpserver",
         "stdio"
       ]
+    },
+    "irix-indy53": {
+      "type": "stdio",
+      "command": "nc",
+      "args": ["localhost", "8753"]
     }
   }
 }
