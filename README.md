@@ -6,7 +6,7 @@ Gives modern AI coding agents (Claude Code, Codex) safe, bounded access to an IR
 
 No public HTTP listener. No OAuth. No cloud service. Transport security is SSH.
 
-**Status: v0.1.0 — fully functional on IRIX 6.5. All 15 MCP tools implemented and tested.**
+**Status: v0.2.0 — fully functional on IRIX 6.5 and 5.3. 18 MCP tools. Native IDO build for IRIX 5.3.**
 
 ---
 
@@ -324,9 +324,9 @@ See [`docs/PORTABILITY_MATRIX.md`](docs/PORTABILITY_MATRIX.md) for IRIX 6.2 and 
 
 | Platform | ABI | ISA | Compiler | Status |
 |---|---|---|---|---|
-| IRIX 6.5 | N32 | MIPS-IV | MIPSpro 7.4 | **Shipping (v0.1.0)** |
+| IRIX 6.5 | N32 | MIPS-IV | MIPSpro 7.4 | **Shipping (v0.2.0)** |
 | IRIX 6.2 | N32 | MIPS-III | MIPSpro | Planned |
-| IRIX 5.3 | O32 | MIPS-II | IDO ucode `cc` | Planned |
+| IRIX 5.3 | O32 | MIPS-II | IDO ucode `cc` | **Shipping (v0.2.0)** |
 
 ---
 

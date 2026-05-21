@@ -318,7 +318,7 @@ install: all
 #   inst -f mcpserver-0.1.0-irix65.tardist
 # or drag-and-drop into Software Manager.
 # ---------------------------------------------------------------
-PKG_VERSION      = 0.1.0
+PKG_VERSION      = 0.2.0
 TARDIST          = mcpserver-$(PKG_VERSION)-irix65.tardist
 TARDIST_IRIX62   = mcpserver-$(PKG_VERSION)-irix62.tardist
 TARDIST_IRIX53   = mcpserver-$(PKG_VERSION)-irix53.tardist
