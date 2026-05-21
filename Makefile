@@ -186,15 +186,16 @@ irix53:
 # ---------------------------------------------------------------
 # IRIX 5.3 native build — run on a real IRIX 5.3 system with IDO.
 #
-# Uses SHELL=/bin/sh to avoid csh command-line length limits and
-# csh VAR=value syntax restrictions. Compiles each file individually
-# to keep recipe lines short, then links from .o files.
+# Compiles each file individually to keep recipe lines short enough
+# for IRIX 5.3 csh, then links from .o files.
 #
-#   make irix53-native
+# IRIX 5.3 old make does not support per-target SHELL overrides.
+# Pass SHELL on the command line to use /bin/sh (avoids csh limits):
+#
+#   make irix53-native SHELL=/bin/sh
 # ---------------------------------------------------------------
 CFLAGS_IDO = -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE -D_POSIX_SOURCE -D_BSD_TYPES
 
-irix53-native: SHELL=/bin/sh
 irix53-native:
 	cc $(CFLAGS_IDO) $(INCLUDES) -c src/compat/snprintf.c
 	cc $(CFLAGS_IDO) $(INCLUDES) -c src/compat/realpath.c
