@@ -351,9 +351,26 @@ cmd_status(void)
 static int
 cmd_start(void)
 {
-    /* TODO: check not already running, then exec mcpserverd */
+    pid_t pid;
+
+    if (read_pid() > 0) {
+        fprintf(stderr, "mcpserver: daemon already running\n");
+        return 1;
+    }
     printf("Starting mcpserverd...\n");
-    return system("/usr/sbin/mcpserverd");
+    pid = fork();
+    if (pid < 0) {
+        perror("mcpserver: fork");
+        return 1;
+    }
+    if (pid == 0) {
+        /* child: exec the daemon */
+        execl("/usr/sbin/mcpserverd", "mcpserverd", NULL);
+        perror("mcpserver: exec /usr/sbin/mcpserverd");
+        _exit(1);
+    }
+    /* parent: return immediately, daemon runs in background */
+    return 0;
 }
 
 static int
