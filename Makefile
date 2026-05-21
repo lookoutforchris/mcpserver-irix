@@ -184,6 +184,23 @@ irix53:
 	@echo "      For release, build on IRIX 5.3 with IDO and -non_shared."
 
 # ---------------------------------------------------------------
+# IRIX 5.3 native build — run on a real IRIX 5.3 system with IDO.
+#
+# IRIX 5.3 make runs recipes under csh, which does not support the
+# VAR=value command inline syntax used by the irix53 target above.
+# This target avoids that by using plain cc (IDO default) and
+# adding -non_shared for fully static binaries.
+#
+#   make irix53-native
+# ---------------------------------------------------------------
+CFLAGS_IDO = -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE
+
+irix53-native:
+	cc $(CFLAGS_IDO) $(INCLUDES) -non_shared -o mcpserverd $(DAEMON_ALL)
+	cc $(CFLAGS_IDO) $(INCLUDES) -non_shared -o mcpserver $(CLI_ALL)
+	@echo "=== irix53-native build complete (static O32 MIPS-II) ==="
+
+# ---------------------------------------------------------------
 # ISA verification
 #
 # Run after any build to confirm the ELF ISA matches the target.
