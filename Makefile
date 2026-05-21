@@ -193,11 +193,22 @@ irix53:
 #
 #   make irix53-native
 # ---------------------------------------------------------------
-CFLAGS_IDO = -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE -D_POSIX_SOURCE
+CFLAGS_IDO = -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE -D_POSIX_SOURCE -D_BSD_TYPES
 
 irix53-native:
-	cc $(CFLAGS_IDO) $(INCLUDES) -non_shared -o mcpserverd $(DAEMON_ALL)
-	cc $(CFLAGS_IDO) $(INCLUDES) -non_shared -o mcpserver $(CLI_ALL)
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/compat/snprintf.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -non_shared -o mcpserverd \
+		src/compat/realpath.c src/compat/fnmatch.c snprintf.o \
+		src/core/json.c src/core/policy.c src/core/protocol.c \
+		src/core/tools_fs.c src/core/tools_text.c \
+		src/core/tools_write.c src/core/tools_exec.c \
+		src/daemon/ipc.c src/daemon/mcpserverd.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -non_shared -o mcpserver \
+		src/compat/realpath.c src/compat/fnmatch.c snprintf.o \
+		src/core/json.c src/core/policy.c src/core/protocol.c \
+		src/core/tools_fs.c src/core/tools_text.c \
+		src/core/tools_write.c src/core/tools_exec.c \
+		src/daemon/ipc.c src/cli/stdio_bridge.c src/cli/mcpserver.c
 	@echo "=== irix53-native build complete (static O32 MIPS-II) ==="
 
 # ---------------------------------------------------------------
