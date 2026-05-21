@@ -2,7 +2,7 @@
 
 **Working project name:** `irix-mcpserver`  
 **Planning baseline:** 2026-05-18  
-**Primary development owner:** Christopher Miller  
+**Primary development owner:** lookoutforchris  
 **Primary coding workflow:** Codex inside VS Code on the local Windows workstation  
 **Initial live hardware target:** SGI Octane2 running IRIX 6.5.30  
 **Long-range platform target:** IRIX 6.5.x, IRIX 6.2, and IRIX 5.3 where practical and supportable
@@ -15,7 +15,7 @@ This project will create a **native, portable, local-first MCP server for IRIX**
 
 The project is intentionally ambitious:
 
-- It should work well on Christopher's Octane2 running IRIX 6.5.30.
+- It should work well on the developer's Octane2 running IRIX 6.5.30.
 - It should be designed from the outset so that **IRIX 6.2** and **IRIX 5.3** can be supported with targeted builds and compatibility work.
 - It should expose a **consistent tool contract** inspired by the already-successful Galaxy MCP server project, while avoiding Galaxy's public-HTTP/OAuth complexity.
 - It should be **local-first**: no public HTTP listener on IRIX, no Auth0, no remote cloud-facing exposure.
@@ -629,7 +629,7 @@ After the 6.5 design is stable enough to avoid constant churn:
 - bring up 5.3 build/testing,
 - adjust compatibility shims,
 - document behavior differences,
-- recruit community testers where Christopher does not have hardware/images immediately available.
+- recruit community testers where the developer does not have hardware/images immediately available.
 
 ### 11.7 Stage 7: Packaging and Public Beta
 
