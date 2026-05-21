@@ -193,7 +193,7 @@ irix53:
 #
 #   make irix53-native
 # ---------------------------------------------------------------
-CFLAGS_IDO = -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE
+CFLAGS_IDO = -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE -D_POSIX_SOURCE
 
 irix53-native:
 	cc $(CFLAGS_IDO) $(INCLUDES) -non_shared -o mcpserverd $(DAEMON_ALL)
