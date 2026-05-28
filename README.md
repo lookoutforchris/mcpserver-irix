@@ -6,7 +6,7 @@ Gives modern AI coding agents (Claude Code, Codex) safe, bounded access to an IR
 
 No public HTTP listener. No OAuth. No cloud service. Transport security is SSH.
 
-**Status: v0.2.0 — fully functional on IRIX 6.5 and 5.3. 18 MCP tools. Native IDO build for IRIX 5.3.**
+**Status: v0.3.0 — fully functional on IRIX 6.5, 6.2, and 5.3. 23 MCP tools including build/compile/run. Man pages included.**
 
 ---
 

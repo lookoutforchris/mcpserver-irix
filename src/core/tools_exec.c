@@ -125,6 +125,83 @@ static const struct cmd_def CMD_TABLE[] = {
       { "-k", "-l", "-t", NULL },
       0, 0 },
 
+    { "rpcinfo",  "/usr/etc/rpcinfo",
+      { "-p", "-n", "-t", "-u", NULL },
+      1, 1 },
+
+    { "showmount", "/usr/etc/showmount",
+      { "-e", "-a", "-d", NULL },
+      1, 0 },
+
+    { "mount",   "/etc/mount",
+      { "-o", "-t", "-v", NULL },
+      1, 0 },
+
+    { "umount",  "/etc/umount",
+      { NULL },
+      1, 0 },
+
+    /* --- system information (IRIX-specific) --- */
+    { "hinv",     "/sbin/hinv",
+      { "-c", "-v", NULL },
+      0, 0 },
+
+    { "versions", "/usr/sbin/versions",
+      { "-b", "-n", NULL },
+      1, 0 },
+
+    { "uptime",   "/usr/bsd/uptime",
+      { NULL },
+      0, 0 },
+
+    { "w",        "/usr/bsd/w",
+      { NULL },
+      0, 0 },
+
+    { "chkconfig", "/sbin/chkconfig",
+      { NULL },
+      1, 0 },
+
+    { "what",     "/usr/bin/what",
+      { NULL },
+      1, 0 },
+
+    /* --- disk / process --- */
+    { "du",       "/usr/bin/du",
+      { "-s", "-k", "-a", "-h", NULL },
+      1, 0 },
+
+    { "kill",     "/bin/kill",
+      { "-HUP", "-TERM", "-1", "-15", NULL },
+      1, 0 },
+
+    /* --- network --- */
+    { "netstat",  "/usr/etc/netstat",
+      { "-a", "-n", "-r", "-i", "-s", "-p", NULL },
+      0, 0 },
+
+    { "ifconfig", "/usr/etc/ifconfig",
+      { NULL },
+      1, 0 },
+
+    /* --- binary / library inspection --- */
+    { "od",       "/bin/od",
+      { "-c", "-x", "-d", "-o", "-b", "-v", NULL },
+      1, 0 },
+
+    { "ar",       "/usr/bin/ar",
+      { "t", "p", "x", NULL },
+      1, 0 },
+
+    { "ldd",      "/usr/bin/ldd",
+      { "-v", NULL },
+      1, 0 },
+
+    /* --- text processing --- */
+    { "sort",     "/bin/sort",
+      { "-n", "-r", "-u", "-k", "-t", NULL },
+      1, 0 },
+
     { NULL, NULL, { NULL }, 0, 0 }
 };
 

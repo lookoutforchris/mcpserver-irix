@@ -50,7 +50,8 @@ CORE_SRCS = \
 	src/core/tools_fs.c \
 	src/core/tools_text.c \
 	src/core/tools_write.c \
-	src/core/tools_exec.c
+	src/core/tools_exec.c \
+	src/core/tools_build.c
 
 DAEMON_SRCS = \
 	src/daemon/ipc.c \
@@ -207,16 +208,17 @@ irix53-native:
 	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_text.c
 	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_write.c
 	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_exec.c
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_build.c
 	cc $(CFLAGS_IDO) $(INCLUDES) -c src/daemon/ipc.c
 	cc $(CFLAGS_IDO) $(INCLUDES) -c src/daemon/mcpserverd.c
 	cc $(CFLAGS_IDO) $(INCLUDES) -c src/cli/stdio_bridge.c
 	cc $(CFLAGS_IDO) $(INCLUDES) -c src/cli/mcpserver.c
 	cc -o32 -o mcpserverd snprintf.o realpath.o fnmatch.o \
 		json.o policy.o protocol.o tools_fs.o tools_text.o \
-		tools_write.o tools_exec.o ipc.o mcpserverd.o
+		tools_write.o tools_exec.o tools_build.o ipc.o mcpserverd.o
 	cc -o32 -o mcpserver snprintf.o realpath.o fnmatch.o \
 		json.o policy.o protocol.o tools_fs.o tools_text.o \
-		tools_write.o tools_exec.o ipc.o stdio_bridge.o mcpserver.o
+		tools_write.o tools_exec.o tools_build.o ipc.o stdio_bridge.o mcpserver.o
 	@echo "=== irix53-native build complete ==="
 
 # ---------------------------------------------------------------

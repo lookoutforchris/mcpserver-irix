@@ -13,6 +13,7 @@
 #include "tools_text.h"
 #include "tools_write.h"
 #include "tools_exec.h"
+#include "tools_build.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -101,12 +102,34 @@ static const char TOOLS_LIST_RO[] =
       "\"required\":[\"path\"]}},"
 
     "{\"name\":\"run_inspect_command\","
-     "\"description\":\"Execute one whitelisted read-only command (full profile only).\","
+     "\"description\":\"Execute one whitelisted inspection command (pwd, ls, find, grep, diff, nm, hinv, netstat, etc.). Full profile only.\","
      "\"inputSchema\":{\"type\":\"object\","
       "\"properties\":{"
        "\"command\":{\"type\":\"string\"},"
        "\"args\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},"
-      "\"required\":[\"command\",\"args\"]}}"
+      "\"required\":[\"command\",\"args\"]}},"
+
+    "{\"name\":\"run_build_command\","
+     "\"description\":\"Run a build or packaging tool (cc, make, ar, tar, chmod, cp, makedist, inst, etc.) within a configured project root. No flag restrictions — full compiler and build-system freedom. Full profile only.\","
+     "\"inputSchema\":{\"type\":\"object\","
+      "\"properties\":{"
+       "\"command\":{\"type\":\"string\","
+        "\"description\":\"Tool name: cc, c++, make, ar, ranlib, strip, ld, chmod, chown, cp, mv, ln, mkdir, rm, install, tar, gzip, compress, makedist, inst, gendist, elfdump, dis\"},"
+       "\"args\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},"
+       "\"work_dir\":{\"type\":\"string\","
+        "\"description\":\"Working directory (must be within a configured root). Defaults to daemon cwd.\"}},"
+      "\"required\":[\"command\",\"args\"]}},"
+
+    "{\"name\":\"run_program\","
+     "\"description\":\"Execute a compiled program or test binary within a configured project root. Captures stdout and stderr. Full profile only.\","
+     "\"inputSchema\":{\"type\":\"object\","
+      "\"properties\":{"
+       "\"program\":{\"type\":\"string\","
+        "\"description\":\"Absolute path to the executable. Must be within a configured project root.\"},"
+       "\"args\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},"
+       "\"work_dir\":{\"type\":\"string\","
+        "\"description\":\"Working directory (must be within a configured root). Defaults to daemon cwd.\"}},"
+      "\"required\":[\"program\",\"args\"]}}"
     "]}";
 
 /* Write tools appended for full profile - built dynamically in handle_tools_list */
@@ -413,6 +436,90 @@ handle_tools_call(struct protocol_ctx *ctx,
 
         n = tool_run_inspect_command(ctx->policy, cmd,
                                      arg_ptrs, result, sizeof(result));
+        return (n > 0) ? wrap_tool_result(resp, rsz,
+                         req->id, req->id_is_null, result) : -1;
+    }
+
+    if (strcmp(tool, "run_build_command") == 0) {
+        static char bc_arg_storage[BUILD_ARGS_MAX][256];
+        static const char *bc_arg_ptrs[BUILD_ARGS_MAX + 1];
+        char bc_args_json[8192];
+        char bc_cmd[64];
+        char bc_work[1024];
+        int  bc_nargs, bc_ai;
+
+        if (json_get_string(args_json, "command", bc_cmd, sizeof(bc_cmd)) != 0)
+            return jsonrpc_write_error(resp, (size_t)rsz,
+                       req->id, req->id_is_null,
+                       JSONRPC_INVALID_PARAMS, "missing command");
+
+        bc_args_json[0] = '\0';
+        json_get_object(args_json, "args", bc_args_json, sizeof(bc_args_json));
+
+        bc_nargs = 0;
+        if (bc_args_json[0] == '[') {
+            char bc_wrapped[8192 + 16];
+            int  wn = snprintf(bc_wrapped, sizeof(bc_wrapped),
+                               "{\"a\":%s}", bc_args_json);
+            if (wn > 0 && (size_t)wn < sizeof(bc_wrapped)) {
+                bc_nargs = json_get_string_array(bc_wrapped, "a",
+                               (char *)bc_arg_storage, 256, BUILD_ARGS_MAX);
+                if (bc_nargs < 0) bc_nargs = 0;
+            }
+        }
+        for (bc_ai = 0; bc_ai < bc_nargs; bc_ai++)
+            bc_arg_ptrs[bc_ai] = bc_arg_storage[bc_ai];
+        bc_arg_ptrs[bc_nargs] = NULL;
+
+        bc_work[0] = '\0';
+        json_get_string(args_json, "work_dir", bc_work, sizeof(bc_work));
+
+        n = tool_run_build_command(ctx->policy, bc_cmd,
+                                   bc_arg_ptrs,
+                                   bc_work[0] ? bc_work : NULL,
+                                   result, sizeof(result));
+        return (n > 0) ? wrap_tool_result(resp, rsz,
+                         req->id, req->id_is_null, result) : -1;
+    }
+
+    if (strcmp(tool, "run_program") == 0) {
+        static char rp_arg_storage[BUILD_ARGS_MAX][256];
+        static const char *rp_arg_ptrs[BUILD_ARGS_MAX + 1];
+        char rp_args_json[8192];
+        char rp_prog[1024];
+        char rp_work[1024];
+        int  rp_nargs, rp_ai;
+
+        if (json_get_string(args_json, "program", rp_prog, sizeof(rp_prog)) != 0)
+            return jsonrpc_write_error(resp, (size_t)rsz,
+                       req->id, req->id_is_null,
+                       JSONRPC_INVALID_PARAMS, "missing program");
+
+        rp_args_json[0] = '\0';
+        json_get_object(args_json, "args", rp_args_json, sizeof(rp_args_json));
+
+        rp_nargs = 0;
+        if (rp_args_json[0] == '[') {
+            char rp_wrapped[8192 + 16];
+            int  wn = snprintf(rp_wrapped, sizeof(rp_wrapped),
+                               "{\"a\":%s}", rp_args_json);
+            if (wn > 0 && (size_t)wn < sizeof(rp_wrapped)) {
+                rp_nargs = json_get_string_array(rp_wrapped, "a",
+                               (char *)rp_arg_storage, 256, BUILD_ARGS_MAX);
+                if (rp_nargs < 0) rp_nargs = 0;
+            }
+        }
+        for (rp_ai = 0; rp_ai < rp_nargs; rp_ai++)
+            rp_arg_ptrs[rp_ai] = rp_arg_storage[rp_ai];
+        rp_arg_ptrs[rp_nargs] = NULL;
+
+        rp_work[0] = '\0';
+        json_get_string(args_json, "work_dir", rp_work, sizeof(rp_work));
+
+        n = tool_run_program(ctx->policy, rp_prog,
+                             rp_arg_ptrs,
+                             rp_work[0] ? rp_work : NULL,
+                             result, sizeof(result));
         return (n > 0) ? wrap_tool_result(resp, rsz,
                          req->id, req->id_is_null, result) : -1;
     }

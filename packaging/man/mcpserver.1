@@ -1,0 +1,238 @@
+.\" @(#)mcpserver.1  0.3.0  2026
+.TH mcpserver 1 "2026" "mcpserver-irix 0.3.0" "IRIX User Commands"
+.SH NAME
+mcpserver \- operator CLI and stdio bridge for the IRIX MCP server
+.SH SYNOPSIS
+.B mcpserver
+.I command
+.RI [ args ]
+.SH DESCRIPTION
+.B mcpserver
+is the operator interface to
+.BR mcpserverd (1M),
+the IRIX MCP server daemon.
+It provides subcommands to manage the daemon lifecycle, edit the project
+registry, generate and apply policy, and run the MCP stdio bridge.
+.PP
+The
+.B stdio
+subcommand is the primary integration point for AI clients.
+When invoked over an SSH session,
+.B "mcpserver stdio"
+speaks MCP JSON-RPC 2.0 on stdin/stdout and proxies requests to the
+local
+.B mcpserverd
+socket.
+Diagnostics go to stderr only; stdout is reserved for MCP traffic.
+.SH COMMANDS
+.SS Daemon management
+.TP
+.B start
+Start
+.BR mcpserverd .
+.TP
+.B stop
+Stop
+.BR mcpserverd .
+.TP
+.B restart
+Stop, then start
+.BR mcpserverd .
+.TP
+.B status
+Print boot enable state (from
+.BR chkconfig )
+and current daemon PID, or
+.I stopped
+if the daemon is not running.
+.TP
+.B enable
+Mark the daemon to start at boot
+.RB ( chkconfig " flag on)"
+and start it immediately.
+.TP
+.B disable
+Stop the daemon and mark it not to start at boot.
+.TP
+.B logs " [" N ]
+Print the last
+.I N
+lines of syslog output from
+.BR mcpserverd .
+Default is 80 lines.
+.SS Configuration management
+.TP
+.B show
+Print the current project registry
+.RI ( /etc/mcpserver/projects.json )
+in tabular form, one project per line with name, access mode, and root path.
+.TP
+.BI "add " "name root " "--rw" | "--ro" " [--deny " pattern "...]"
+Add a project entry to the registry.
+.I name
+is a short identifier.
+.I root
+must be an absolute path.
+.B --rw
+grants read-write access;
+.B --ro
+grants read-only access.
+Repeat
+.B --deny
+to add glob patterns that block access to matching paths within the root.
+Deny patterns must be relative and must not contain
+.BR .. .
+Writes to
+.I /etc/mcpserver/projects.json
+immediately; run
+.B mcpserver apply
+to activate the change in the daemon.
+.TP
+.BI "remove " name
+Remove the named project from the registry.
+Writes to
+.I /etc/mcpserver/projects.json
+immediately; run
+.B mcpserver apply
+to activate.
+.TP
+.B validate
+Validate the project registry and the policy that would be generated
+from it.
+Checks for duplicate names, duplicate roots, absolute deny patterns,
+and
+.B ..
+in deny patterns.
+Then generates the policy and attempts to load it.
+Exits 0 on success, 1 on any error.
+.TP
+.B preview
+Print to stdout the
+.I boundaries.json
+that
+.B mcpserver apply
+would write, without modifying anything.
+Useful for reviewing a proposed policy change.
+.TP
+.B apply
+Generate
+.I /etc/mcpserver/boundaries.json
+from the current project registry.
+The previous
+.I boundaries.json
+is backed up to
+.IR /etc/mcpserver/backup/ .
+If the daemon is running,
+.B SIGHUP
+is sent so it reloads the new policy without a restart.
+.SS Bridge mode
+.TP
+.B stdio
+Connect to the running
+.B mcpserverd
+and run as a MCP stdio bridge.
+Reads JSON-RPC 2.0 requests from stdin, forwards them to the daemon
+over
+.IR /var/run/mcpserverd.sock ,
+and writes responses to stdout.
+Exits when stdin is closed.
+This is the mode invoked by Claude Code and Codex via SSH; it should
+not be run interactively.
+.SS Miscellaneous
+.TP
+.B help
+Print a usage summary.
+.TP
+.B version
+Print the version string.
+.SH WORKFLOW
+Typical workflow for adding a new project:
+.PP
+.RS
+.nf
+mcpserver add myproj /usr/people/me/src --rw
+mcpserver validate
+mcpserver preview
+mcpserver apply
+.fi
+.RE
+.PP
+The
+.B apply
+step signals the running daemon; no restart is required.
+.PP
+To connect Claude Code to the IRIX machine, configure the MCP server
+entry in Claude Code to run:
+.PP
+.RS
+.nf
+ssh root@\fIhostname\fP mcpserver stdio
+.fi
+.RE
+.SH FILES
+.TP
+.I /etc/mcpserver/projects.json
+Operator project registry.
+Managed by
+.B mcpserver add
+and
+.BR "mcpserver remove" .
+.TP
+.I /etc/mcpserver/boundaries.json
+Active policy file loaded by
+.BR mcpserverd (1M).
+Written by
+.BR "mcpserver apply" .
+.TP
+.I /etc/mcpserver/backup/
+Backups of previous
+.I boundaries.json
+files, named with a timestamp suffix.
+.TP
+.I /var/run/mcpserverd.pid
+Daemon PID file; read by status, stop, restart, and apply.
+.TP
+.I /var/run/mcpserverd.sock
+UNIX-domain socket connecting the bridge to the daemon.
+.TP
+.I /var/config/mcpserver
+.BR chkconfig (1M)
+flag file managed by
+.B enable
+and
+.BR disable .
+.TP
+.I /etc/init.d/mcpserverd
+Init script invoked by boot sequences and by
+.B start
+and
+.BR stop .
+.SH "EXIT STATUS"
+.TP
+0
+Success.
+.TP
+1
+An error occurred; a message is printed to stderr.
+.SH "SEE ALSO"
+.BR mcpserverd (1M),
+.BR chkconfig (1M),
+.BR syslog (3)
+.SH NOTES
+Daemon management subcommands
+.RB ( start ,
+.BR stop ,
+.BR restart ,
+.BR enable ,
+.BR disable ,
+.BR apply )
+require root privileges.
+.PP
+.B "mcpserver stdio"
+must be run as root or as the owner of
+.I /var/run/mcpserverd.sock
+in order to connect to the daemon.
+.PP
+This program is part of the
+.B mcpserver-irix
+package, version 0.3.0.
