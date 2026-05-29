@@ -209,12 +209,10 @@ src/
     stdio_bridge.c / stdio_bridge.h — stdio↔socket proxy
 
   compat/
-    compat.h                 — type definitions (int32_t etc.), feature detection
+    compat.h                 — type definitions (int32_t etc.), feature detection, version string
     realpath.c               — portable realpath() for IRIX 5.3
     fnmatch.c                — portable fnmatch() for IRIX 5.3
-    irix53.c                 — IRIX 5.3 specific shims
-    irix62.c                 — IRIX 6.2 specific shims (if needed)
-    irix65.c                 — IRIX 6.5 specific shims (if needed)
+    snprintf.c               — portable snprintf() for IRIX 5.3 (absent from libc)
 
 tests/
   unit/

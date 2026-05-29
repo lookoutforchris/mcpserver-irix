@@ -146,7 +146,7 @@ Killing IRIS without a proper IRIX shutdown causes uncontrolled filesystem corru
 
 **Required shutdown procedure (every time, no exceptions):**
 
-1. Connect via telnet to port 2323 (requires manual IAC negotiation — three rounds of `0xff 0xfd/0xfb` before the login prompt appears)
+1. Connect via the serial console: raw TCP to `localhost:8881` (PuTTY: Raw mode, local echo off). Do **not** use port 2323 — the telnet forward is unreliable.
 2. Log in as `root`
 3. Run: `shutdown -y -i0 -g0`
 4. Wait for IRIX to halt cleanly (console shows halt/sync messages)
@@ -162,9 +162,13 @@ This rule applies even when IRIX appears idle at a login prompt. Uncontrolled ki
 |---|---|---|
 | Galaxy MCP server (reference only) | `reference-local/existing_mcpserver/` | Behavioral reference for tool semantics and operator UX |
 | SGI documentation | `reference-local/documentation/` | Primary source for all IRIX technical decisions |
-| Project plan | `docs/PROJECT_PLAN.md` | Goals, milestones, workstreams |
 | Architecture | `docs/ARCHITECTURE.md` | Component design and IPC |
 | Tool contract | `docs/TOOL_CONTRACT.md` | All v1 tool specifications |
 | Config schema | `docs/CONFIG_SCHEMA.md` | projects.json and boundaries.json schemas |
 | Security model | `docs/SECURITY_MODEL.md` | Path policy, write policy, command policy |
 | Portability matrix | `docs/PORTABILITY_MATRIX.md` | Per-target compiler/ABI/syscall facts |
+| IRIS emulator setup | `docs/IRIS_EMULATOR_SETUP.md` | IRIS emulator setup, file transfer, known bugs |
+| Octane2 operations | `docs/OCTANE2_OPERATIONS.md` | Octane2 system notes, NFS layout, boot sequence |
+| Release workflow | `docs/RELEASE_WORKFLOW.md` | Full build/package/release procedure for all three targets |
+| IRIS upstream bugs | `docs/iris-bugs/` | Detailed bug reports filed or pending with the IRIS project |
+| Project plan (historical) | `docs/archive/PROJECT_PLAN.md` | Original pre-build planning document — for reference only |

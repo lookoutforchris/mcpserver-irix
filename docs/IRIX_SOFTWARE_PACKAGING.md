@@ -4,6 +4,11 @@ A guide for programmers who know IRIX and MIPSpro but have not packaged
 software for IRIX before. Covers both the command-line (`gendist`) and
 GUI (`swpkg`) workflows.
 
+> **For the step-by-step release procedure for this project, see
+> `docs/RELEASE_WORKFLOW.md`.** This document is the deeper technical
+> reference for packaging concepts (tardist structure, IDB format, spec
+> syntax, gendist options).
+
 Primary sources: *Software Packager User's Guide* (007-2503-003) and the
 `gendist(1M)` reference page.
 

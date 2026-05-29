@@ -18,7 +18,7 @@ IRIS is an SGI Indy (MIPS R4400) emulator. Repository: https://github.com/techom
 | Guest→host TCP port-forward | **BROKEN** — IRIS bug (see §12) |
 | MCP transport over inetd/TCP | **Not functional** — blocked by port-forward bug |
 | Scratch disk file transfer | Working |
-| TFTP file transfer | Working — preferred method (see §11) |
+| TFTP file transfer | Unreliable in practice — use scratch disk instead (see §9) |
 | NFS (NFSv2, unfsd) | Partial — first `ls` works; repeated listing broken (IRIX 5.3 kernel, see §10) |
 | iris-ci (headless CI) on Windows | Not buildable — uses Unix socket APIs |
 
@@ -230,13 +230,15 @@ ping -c 3 192.168.0.5    # Galaxy — reachable via NAT
 
 ## 8. MCP Server Transport via inetd
 
-> **STATUS: NOT FUNCTIONAL** — IRIS has a TCP port-forward bug that prevents
-> guest→host data forwarding. The configuration below is correct and in place;
-> it will work once the IRIS bug is fixed. See §11 for bug details.
-
-The intended transport: inetd on IRIX 5.3 listens on port 8753 and spawns
+The transport uses inetd on IRIX 5.3 listening on port 8753, which spawns
 `mcpserver stdio` per connection. IRIS forwards port 8753 from the Windows
 host to the IRIX 5.3 guest.
+
+> **Note:** IRIS has a TCP port-forward bug (see §12) where the guest→host
+> direction of data does not reach the Windows socket. The `tcp-bridge.ps1`
+> workaround below resolves this — it keeps the TCP connection alive until
+> IRIS delivers the buffered data. The transport is **fully functional** with
+> this workaround.
 
 **On IRIX 5.3 (already configured on the current disk image):**
 
@@ -250,11 +252,10 @@ mcpmcp  8753/tcp
 mcpmcp  stream  tcp  nowait  root  /usr/bin/mcpserver  mcpserver stdio
 ```
 
-inetd is running and will spawn `mcpserver stdio` on each connection.
+inetd is running and spawns `mcpserver stdio` on each connection.
 
-**On Windows — `.mcp.json` entry (currently removed, pending bug fix):**
+**On Windows — `.mcp.json` entry (already in place):**
 
-A PowerShell bridge script (`scripts/tcp-bridge.ps1`) replaces `nc`:
 ```json
 {
   "mcpServers": {
@@ -271,15 +272,9 @@ A PowerShell bridge script (`scripts/tcp-bridge.ps1`) replaces `nc`:
 }
 ```
 
-Re-add this to `.mcp.json` once the IRIS TCP port-forward bug is resolved.
-
-**What was confirmed working before the bug blocked progress:**
-
-- Host→guest direction: Windows can successfully TCP-connect to IRIX on port 8753
-- inetd correctly spawns `mcpserver stdio` (confirmed in IRIX syslog)
-- `mcpserverd` processes the MCP `initialize` request and generates a 152-byte response
-- The 152-byte response is sent by the IRIX TCP stack to IRIS's NAT layer
-- IRIS NAT receives the data (`in_flight=152`) but does NOT forward it to the Windows socket
+`tcp-bridge.ps1` is a PowerShell stdio↔TCP bridge that connects Claude Code's
+stdio to the IRIS-forwarded port 8753. It uses `CopyToAsync` on separate threads
+to handle bidirectional forwarding correctly (see script for details).
 
 ---
 
@@ -411,7 +406,7 @@ umount /mnt/host
 
 ---
 
-## 11. TFTP File Transfer (Recommended)
+## 11. TFTP File Transfer
 
 TFTP uses UDP and bypasses the IRIS guest→host TCP forwarding bug entirely.
 Use it to copy files from Windows into IRIX while the emulator is running.
@@ -452,13 +447,13 @@ tftp> get myfile.tar /usr/tmp/myfile.tar
 tftp> quit
 ```
 
-### NFS vs TFTP
+### NFS vs TFTP vs Scratch Disk
 
 | Method | Notes |
 |---|---|
-| TFTP | Preferred. UDP-only, no IRIS bugs, works while emulator runs |
-| NFS | Reliable for first `ls` and all file access by name; directory listing breaks after first use (IRIX 5.3 kernel limitation — unfixable from server side) |
-| Scratch disk | Reliable but requires stopping IRIS to write from Windows |
+| Scratch disk | **Preferred** — reliable, no IRIS bugs; IRIS does not hold an exclusive lock so Windows can write while IRIX is running |
+| TFTP | UDP-only, bypasses the TCP bug; but in practice transfers time out unpredictably — not reliable enough for routine use |
+| NFS | Works for first `ls` and all file access by exact name; directory listing breaks after first use (IRIX 5.3 kernel limitation — unfixable from server side) |
 
 ---
 
@@ -515,7 +510,7 @@ substitution, not `$(...)`. To stop the daemon: `mcpserver stop` or
 
 ---
 
-## 12. Known IRIS Bugs
+## 13. Known IRIS Bugs
 
 ### Bug 1 — TCP Port-Forward (Guest→Host Direction Broken)
 
@@ -593,7 +588,7 @@ unfsd is not listening.
 
 ---
 
-## 13. Installing IDO on IRIX 5.3
+## 14. Installing IDO on IRIX 5.3
 
 The IDO C compiler is distributed as a network install dist tree. Transfer and install:
 
@@ -616,7 +611,7 @@ After installation, `/usr/bin/cc` is the IDO ucode C compiler.
 
 ---
 
-## 14. Known Issues (Other)
+## 15. Known Issues (Other)
 
 | Issue | Workaround |
 |---|---|
@@ -626,7 +621,7 @@ After installation, `/usr/bin/cc` is the IDO ucode C compiler.
 | `/var/run/mcpserverd.sock` fails on bind | Create `/var/run/` first: `mkdir -p /var/run` |
 | Serial console echoes double characters | Set PuTTY to Raw mode with local echo/editing forced off |
 | csh truncates long commands | Break into short lines; use `make irix53-native SHELL=/bin/sh` |
-| NFS `mount` hangs hard | nfs-proxy.py not running — IRIS bug: port 2049 not redirected to unfsd (see §10, §12) |
+| NFS `mount` hangs hard | nfs-proxy.py not running — IRIS bug: port 2049 not redirected to unfsd (see §10, §13) |
 | NFS mount path on IRIX 5.3 | Server is `10.53.0.1` (IRIS gateway), path is `/c/dev/tools/iris/shared` |
 | IRIX cannot reach real LAN | By design — use NAT gateway 10.53.0.1; real LAN hosts reachable via NAT |
 | `iris-ci` build fails on Windows | Unix socket API (`UnixStream`) not available on Windows; Unix-only binary |
