@@ -49,6 +49,9 @@ struct cmd_def {
     int         allow_path_args;
     /* 1 if -n NUM style numeric option is allowed (head/tail/wc) */
     int         allow_num_opt;
+    /* 1 if non-flag args are names (man pages, etc.) not file paths —
+     * checked for metacharacters only, not against policy roots */
+    int         allow_name_args;
 };
 
 static const struct cmd_def CMD_TABLE[] = {
@@ -202,6 +205,11 @@ static const struct cmd_def CMD_TABLE[] = {
       { "-n", "-r", "-u", "-k", "-t", NULL },
       1, 0 },
 
+    /* --- documentation --- */
+    { "man",      "/usr/bin/man",
+      { NULL },
+      0, 0, 1 },
+
     { NULL, NULL, { NULL }, 0, 0 }
 };
 
@@ -329,12 +337,14 @@ validate_args(const struct cmd_def *def,
                 expect_str = 1;
             }
         } else {
-            /* non-flag: must be a path argument if command allows them */
-            if (!def->allow_path_args) {
+            /* non-flag: name, path, or rejected */
+            if (def->allow_name_args) {
+                /* name argument (man page, product name, etc.) —
+                 * metachar check already done above; no path policy check */
+            } else if (!def->allow_path_args) {
                 *err_msg = "command does not accept path arguments";
                 return 0;
-            }
-            if (!policy_is_read_allowed(p, args[i])) {
+            } else if (!policy_is_read_allowed(p, args[i])) {
                 *err_msg = "path argument outside allowed roots";
                 return 0;
             }

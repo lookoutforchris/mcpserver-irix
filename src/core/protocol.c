@@ -102,7 +102,7 @@ static const char TOOLS_LIST_RO[] =
       "\"required\":[\"path\"]}},"
 
     "{\"name\":\"run_inspect_command\","
-     "\"description\":\"Execute one whitelisted inspection command (pwd, ls, find, grep, diff, nm, hinv, netstat, etc.). Full profile only.\","
+     "\"description\":\"Execute one whitelisted inspection command (pwd, ls, find, grep, diff, nm, hinv, netstat, man, etc.). Full profile only.\","
      "\"inputSchema\":{\"type\":\"object\","
       "\"properties\":{"
        "\"command\":{\"type\":\"string\"},"
