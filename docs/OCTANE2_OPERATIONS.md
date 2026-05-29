@@ -28,8 +28,13 @@ System-level notes for the SGI Octane2 (IRIX 6.5.30) development machine at `spe
 | Socket | `/var/run/mcpserverd.sock` |
 | PID file | `/var/run/mcpserverd.pid` |
 | Project source | `/home/work/projects/mcpserver-irix/` |
+| Policy roots | `/home/work/projects` (rw), `/home/work/tools` (rw) |
 
 Boot integration: `chkconfig mcpserver on`. The init script must background the daemon with `&` — without it, the daemon blocks the boot sequence indefinitely (confirmed failure mode, fixed 2026-05-23).
+
+**SSH access is as root.** Git credentials in `/home/chris/.gitconfig` and `/home/chris/.git-credentials` are NOT visible to root. Public repo clones over HTTPS work without credentials. Authenticated git operations (push) must be done from Windows — Octane2 is never the git authority.
+
+**Working directory discipline:** Always verify the current directory before running `make`, `gendist`, or any build command. Running build commands from `/` instead of the project root will scatter binaries and source directories across the filesystem root. After any build session, check `ls /` for stray `mcpserver*`, `packaging/`, or `scripts/` entries and remove them.
 
 ---
 

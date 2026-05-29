@@ -380,6 +380,7 @@ mcpserver version
 | `inst -f file.tardist` says "bad product" on IRIX 5.3 | Unpack tardist to a directory first: `mkdir /tmp/i && cd /tmp/i && tar xf file.tardist && inst -f /tmp/i` |
 | `inst` doesn't overwrite existing binaries on IRIX 5.3 | Copy manually from build dir after install |
 | `$(...)` fails in tcsh | Use backticks or `mcpserver stop` instead of `kill $(cat ...)` |
+| Stray files at filesystem root (`/mcpserver`, `/packaging/`, `/scripts/`) | Build ran from wrong directory — always `cd` to project root first; check `ls /` after any build session |
 | NFS `ls` only works once per mount on IRIX 5.3 | Known kernel limitation; access files by name after first ls |
 | IRIS won't boot after rebuilding from source | Re-run NVRAM setup: `setenv -f eaddr 08:00:69:de:ad:53` then `rtc save` |
 
