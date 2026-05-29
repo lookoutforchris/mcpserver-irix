@@ -319,13 +319,32 @@ mcpserver version   # confirm new version
 ```
 
 **IRIS 5.3 (PuTTY session):**
+
+IRIX 5.3 `inst` cannot install directly from a `.tardist` file — it reports
+"bad product". Unpack to a directory first, then install:
+
 ```sh
-# Binaries are already at the project root from §3b
-cp /usr/people/shared/projects/mcpserver-irix/mcpserverd /usr/sbin/mcpserverd
-cp /usr/people/shared/projects/mcpserver-irix/mcpserver  /usr/bin/mcpserver
-chmod 755 /usr/sbin/mcpserverd /usr/bin/mcpserver
+mkdir /tmp/mcpinst
+cd /tmp/mcpinst
+tar xf /usr/people/shared/projects/mcpserver-irix/mcpserver-X.Y.Z-irix53.tardist
+inst -f /tmp/mcpinst
+# At Inst> prompt: install all → go → quit
+/sbin/chkconfig -f mcpserver on
+/etc/init.d/mcpserverd start
 mcpserver version   # confirm new version
 ```
+
+If `mcpserver version` still shows the old version after `inst`, existing
+binaries were not overwritten (IRIX 5.3 `inst` preserves files already on
+disk outside package management). Copy manually:
+```sh
+cp /usr/people/shared/projects/mcpserver-irix/mcpserverd /usr/sbin/mcpserverd
+cp /usr/people/shared/projects/mcpserver-irix/mcpserver  /usr/bin/mcpserver
+/etc/init.d/mcpserverd start
+```
+
+Note: tcsh is the default shell on IRIX. Use backticks for command substitution,
+not `$(...)`. Use `mcpserver stop` to stop the daemon.
 
 ---
 
@@ -358,6 +377,9 @@ mcpserver version
 | `inst` on IRIX 5.3 says "bad product" for irix53 tardist | Package was built with 6.5 gendist — must use `irix53-native-tardist` on IRIS 5.3 |
 | gendist spec says wrong version | Update `id` string in all three `.spec` files (irix65, irix62, irix53) |
 | GitHub shows old release as latest | Use `gh release create` — git tag alone does not create a GitHub Release |
+| `inst -f file.tardist` says "bad product" on IRIX 5.3 | Unpack tardist to a directory first: `mkdir /tmp/i && cd /tmp/i && tar xf file.tardist && inst -f /tmp/i` |
+| `inst` doesn't overwrite existing binaries on IRIX 5.3 | Copy manually from build dir after install |
+| `$(...)` fails in tcsh | Use backticks or `mcpserver stop` instead of `kill $(cat ...)` |
 | NFS `ls` only works once per mount on IRIX 5.3 | Known kernel limitation; access files by name after first ls |
 | IRIS won't boot after rebuilding from source | Re-run NVRAM setup: `setenv -f eaddr 08:00:69:de:ad:53` then `rtc save` |
 

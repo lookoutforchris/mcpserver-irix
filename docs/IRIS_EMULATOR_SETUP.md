@@ -469,10 +469,6 @@ After installing IDO (see §13):
 ```sh
 cd /usr/tmp/mcpsrc          # or wherever source was extracted
 make irix53-native SHELL=/bin/sh
-
-# Install
-cp mcpserverd /usr/sbin/mcpserverd
-cp mcpserver /usr/bin/mcpserver
 ```
 
 Required build flags (already in the Makefile target):
@@ -481,12 +477,41 @@ Required build flags (already in the Makefile target):
 
 `src/compat/snprintf.c` provides `snprintf` which is absent from IRIX 5.3 libc.
 
-**After installing,** start the daemon and verify:
+### Installing from a tardist on IRIX 5.3
+
+**Important:** IRIX 5.3 `inst` cannot install directly from a `.tardist` file —
+it reports "bad product". The tardist must be unpacked to a directory first:
+
 ```sh
-mkdir -p /var/run
-/usr/sbin/mcpserverd
-mcpserver version
+mkdir /tmp/mcpinst
+cd /tmp/mcpinst
+tar xf /path/to/mcpserver-X.Y.Z-irix53.tardist
+inst -f /tmp/mcpinst
 ```
+
+At the `Inst>` prompt: `install all` then `go` then `quit`.
+
+After installing, enable and start:
+```sh
+/sbin/chkconfig -f mcpserver on
+/etc/init.d/mcpserverd start
+mcpserver version
+mcpserver status
+```
+
+**Note on existing binaries:** If `mcpserver`/`mcpserverd` already exist on the
+system from a previous manual install, IRIX 5.3 `inst` may not overwrite them.
+If `mcpserver version` shows the old version after install, copy the binaries
+manually from the build directory:
+```sh
+cp /path/to/src/mcpserverd /usr/sbin/mcpserverd
+cp /path/to/src/mcpserver  /usr/bin/mcpserver
+/etc/init.d/mcpserverd start
+```
+
+**Note on tcsh:** The default shell on IRIX is tcsh. Use backticks for command
+substitution, not `$(...)`. To stop the daemon: `mcpserver stop` or
+`` kill `cat /var/run/mcpserverd.pid` ``.
 
 ---
 
