@@ -10,4 +10,14 @@ product mcpserver
 			exp "mcpserver.sw.base"
 		endsubsys
 	endimage
+	image man
+		id "MCP Server Manual Pages"
+		version 1
+		order 9999
+		subsys manpages
+			id "MCP Server Man Pages"
+			default
+			exp "mcpserver.man.manpages"
+		endsubsys
+	endimage
 endproduct

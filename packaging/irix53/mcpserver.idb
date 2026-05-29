@@ -4,4 +4,8 @@ f 0755 root sys mcpserver usr/bin/mcpserver mcpserver.sw.base nostrip
 f 0755 root sys mcpserverd usr/sbin/mcpserverd mcpserver.sw.base nostrip
 f 0644 root sys packaging/irix53/boundaries.json.default etc/mcpserver/boundaries.json mcpserver.sw.base config(suggest)
 f 0644 root sys packaging/irix53/projects.json.default etc/mcpserver/projects.json mcpserver.sw.base config(suggest)
+d 0755 root sys - usr/share/man/u_man/man1 mcpserver.man.manpages
+d 0755 root sys - usr/share/man/p_man/man1m mcpserver.man.manpages
+f 0644 root sys packaging/man/mcpserver.1 usr/share/man/u_man/man1/mcpserver.1 mcpserver.man.manpages
+f 0644 root sys packaging/man/mcpserverd.1m usr/share/man/p_man/man1m/mcpserverd.1m mcpserver.man.manpages
 f 0755 root sys scripts/mcpserverd.init etc/init.d/mcpserverd mcpserver.sw.base exitop("/sbin/chkconfig -f mcpserver off; if [ ! -L /etc/rc2.d/S75mcpserverd ]; then ln -s ../init.d/mcpserverd /etc/rc2.d/S75mcpserverd; fi; if [ ! -L /etc/rc0.d/K15mcpserverd ]; then ln -s ../init.d/mcpserverd /etc/rc0.d/K15mcpserverd; fi; echo ''; echo 'MCP Server for IRIX 5.3 installed.'; echo 'Configure: mcpserver add <name> <root> --ro'; echo 'Apply:     mcpserver apply'; echo 'Enable:    mcpserver enable'; echo ''") removeop("if [ -f /var/run/mcpserverd.pid ]; then kill -TERM \`cat /var/run/mcpserverd.pid\` 2>/dev/null; sleep 1; fi; /sbin/chkconfig -f mcpserver off 2>/dev/null; rm -f /var/config/mcpserver /etc/rc2.d/S75mcpserverd /etc/rc0.d/K15mcpserverd")
