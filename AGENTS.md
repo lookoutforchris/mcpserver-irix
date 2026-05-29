@@ -134,7 +134,29 @@ When uncertain about IRIX behavior, check `docs/PORTABILITY_MATRIX.md` first. If
 
 ---
 
-## 9. Reference Material
+## 9. IRIS Emulator Rules
+
+These rules apply whenever working with the IRIS IRIX emulator running at `C:\dev\tools\iris\`.
+
+### 9.1 Shutdown Protocol — SESSION-ENDING RULE
+
+**Never kill the IRIS process directly without first shutting down IRIX cleanly.**
+
+Killing IRIS without a proper IRIX shutdown causes uncontrolled filesystem corruption on the disk image. If `fsck` fails to repair it on the next boot, the image may become unbootable.
+
+**Required shutdown procedure (every time, no exceptions):**
+
+1. Connect via telnet to port 2323 (requires manual IAC negotiation — three rounds of `0xff 0xfd/0xfb` before the login prompt appears)
+2. Log in as `root`
+3. Run: `shutdown -y -i0 -g0`
+4. Wait for IRIX to halt cleanly (console shows halt/sync messages)
+5. Only then kill the IRIS process
+
+This rule applies even when IRIX appears idle at a login prompt. Uncontrolled kills are never acceptable — disk writes may be in flight.
+
+---
+
+## 10. Reference Material
 
 | Resource | Location | Purpose |
 |---|---|---|

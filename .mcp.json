@@ -1,5 +1,14 @@
 {
   "mcpServers": {
+    "irix-indy53": {
+      "type": "stdio",
+      "command": "powershell",
+      "args": [
+        "-NonInteractive", "-File",
+        "c:/dev/projects/mcpserver-irix/scripts/tcp-bridge.ps1",
+        "-RemoteHost", "localhost", "-Port", "8753"
+      ]
+    },
     "irix-octane2": {
       "type": "stdio",
       "command": "ssh",
@@ -10,11 +19,6 @@
         "/usr/bin/mcpserver",
         "stdio"
       ]
-    },
-    "irix-indy53": {
-      "type": "stdio",
-      "command": "nc",
-      "args": ["localhost", "8753"]
     }
   }
 }
