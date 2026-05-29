@@ -169,7 +169,7 @@ Octane2 must be a clean clone of GitHub at this point:
 ```sh
 # If Octane2 is out of date, wipe and reclone:
 ssh root@speed.siliconsurf.net
-rm -rf /home/chris/src/mcpserver-irix
+rm -rf /home/work/projects/mcpserver-irix
 cd /home/chris/src
 git clone https://github.com/lookoutforchris/mcpserver-irix.git
 ```
@@ -177,7 +177,7 @@ git clone https://github.com/lookoutforchris/mcpserver-irix.git
 Build and stage — always irix65 first:
 
 ```sh
-cd /home/chris/src/mcpserver-irix
+cd /home/work/projects/mcpserver-irix
 mkdir -p stage/irix65 stage/irix62 stage/irix53
 
 # irix65 — delete binaries first to force rebuild (make checks timestamps)
@@ -223,7 +223,7 @@ The IDB files reference binaries as `mcpserverd` / `mcpserver` at the
 project root. Copy staged binaries to root before each tardist.
 
 ```sh
-cd /home/chris/src/mcpserver-irix
+cd /home/work/projects/mcpserver-irix
 
 # irix65
 cp stage/irix65/mcpserverd stage/irix65/mcpserver .
@@ -243,7 +243,7 @@ The irix53 tardist is already done (built on IRIS in §3).
 ```sh
 # From Windows (MSYS2 bash):
 cd /c/dev/projects/mcpserver-irix
-scp root@speed.siliconsurf.net:/home/chris/src/mcpserver-irix/mcpserver-X.Y.Z-*.tardist .
+scp root@speed.siliconsurf.net:/home/work/projects/mcpserver-irix/mcpserver-X.Y.Z-*.tardist .
 # irix53.tardist is already here from §3d
 ```
 
@@ -300,7 +300,7 @@ Now that GitHub is authoritative, bring Octane2 into sync:
 
 ```sh
 ssh root@speed.siliconsurf.net
-rm -rf /home/chris/src/mcpserver-irix
+rm -rf /home/work/projects/mcpserver-irix
 cd /home/chris/src
 git clone https://github.com/lookoutforchris/mcpserver-irix.git
 ```
@@ -311,7 +311,7 @@ git clone https://github.com/lookoutforchris/mcpserver-irix.git
 
 **Octane2:**
 ```sh
-cd /home/chris/src/mcpserver-irix
+cd /home/work/projects/mcpserver-irix
 rm -f mcpserverd mcpserver
 make irix65
 make install
@@ -390,7 +390,7 @@ mcpserver version
 | Item | Path |
 |---|---|
 | Windows project | `C:\dev\projects\mcpserver-irix` |
-| Octane2 project | `/home/chris/src/mcpserver-irix` (always a clean clone) |
+| Octane2 project | `/home/work/projects/mcpserver-irix` (always a clean clone) |
 | IRIS emulator project | `/usr/people/shared/projects/mcpserver-irix` |
 | IRIS emulator source | `/usr/people/shared/projects/mcpserver-irix/src` |
 | Release assets (local) | `C:\dev\projects\mcpserver-irix\release-assets\` (gitignored) |

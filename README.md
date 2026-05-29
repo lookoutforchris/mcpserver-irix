@@ -306,14 +306,14 @@ After any `add` or `remove`, run `mcpserver apply` to put the change into effect
 git clone https://github.com/lookoutforchris/mcpserver-irix.git
 
 # Pull and build on the IRIX machine (IRIX 6.5 / MIPSpro 7.4)
-ssh root@192.168.1.50 "cd /home/chris/src/mcpserver-irix && git pull && make"
+ssh root@192.168.1.50 "cd /home/work/projects/mcpserver-irix && git pull && make"
 
 # Install
-ssh root@192.168.1.50 "cd /home/chris/src/mcpserver-irix && make install"
+ssh root@192.168.1.50 "cd /home/work/projects/mcpserver-irix && make install"
 mcpserver enable
 
 # Build a tardist for distribution
-ssh root@192.168.1.50 "cd /home/chris/src/mcpserver-irix && make tardist"
+ssh root@192.168.1.50 "cd /home/work/projects/mcpserver-irix && make tardist"
 ```
 
 See [`docs/PORTABILITY_MATRIX.md`](docs/PORTABILITY_MATRIX.md) for IRIX 6.2 and 5.3 build targets.

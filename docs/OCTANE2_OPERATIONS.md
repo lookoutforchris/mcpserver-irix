@@ -27,7 +27,7 @@ System-level notes for the SGI Octane2 (IRIX 6.5.30) development machine at `spe
 | Config | `/etc/mcpserver/boundaries.json` |
 | Socket | `/var/run/mcpserverd.sock` |
 | PID file | `/var/run/mcpserverd.pid` |
-| Project source | `/home/chris/src/mcpserver-irix/` |
+| Project source | `/home/work/projects/mcpserver-irix/` |
 
 Boot integration: `chkconfig mcpserver on`. The init script must background the daemon with `&` — without it, the daemon blocks the boot sequence indefinitely (confirmed failure mode, fixed 2026-05-23).
 
