@@ -1,5 +1,5 @@
 product mcpserver
-	id "MCP Server for IRIX 6.5 0.3.0"
+	id "MCP Server for IRIX 6.5 0.3.1"
 	image sw
 		id "MCP Server for IRIX 6.5 Software"
 		version 1
