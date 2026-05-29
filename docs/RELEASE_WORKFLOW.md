@@ -1,209 +1,347 @@
 # mcpserver-irix Release Workflow
 
-This document describes the end-to-end process for building and releasing a new version
-of mcpserver-irix across all three IRIX targets. Written after the v0.3.0 release cycle
-(2026-05-28) to avoid repeating avoidable problems.
+End-to-end procedure for building and releasing a new version across all three
+IRIX targets. Based on the v0.3.0 release cycle (2026-05-29).
 
 ---
 
 ## Overview
 
-The release involves three separate machines and a file transfer step:
+Three machines are involved. Their roles are fixed:
 
 ```
-Windows workstation        → writes code, runs git
-Octane2 (IRIX 6.5)         → builds irix65 + irix62, packages all three tardists
-IRIS emulator (IRIX 5.3)   → builds irix53-native only
-SS/Outbox (Dropbox/Galaxy) → transfer path for irix53 binaries to Octane2
+Windows workstation   → source of truth, all git commits, GitHub releases
+Octane2 (IRIX 6.5)   → builds irix65 + irix62, packages irix65 + irix62 tardists
+IRIS emulator (5.3)  → builds irix53-native, packages irix53 tardist
 ```
 
-**Source of truth: Windows workstation → GitHub.**
-The Octane2 git repo may have diverged (see §6). Resolve before tagging.
+**Windows is the only authoritative git repository.**
+Octane2 is always a clean clone of GitHub — never commit from Octane2.
+IRIS is not git-connected and is never the source of truth for anything.
+
+**Why irix53 must be packaged on IRIX 5.3:**
+`gendist` on IRIX 6.5 produces a package format that `inst` on IRIX 5.3
+rejects ("bad product"). Always build and package irix53 on the IRIS emulator.
 
 ---
 
 ## Step 1 — Code changes on Windows
 
-All development happens in `C:\dev\projects\mcpserver-irix`.
+All development in `C:\dev\projects\mcpserver-irix`.
 
-Key files to update for a new release:
+Files to update for every release:
 - `src/compat/compat.h` — bump `MCPSERVER_VERSION`
-- `packaging/irix65/mcpserver.spec` — update `id` string with new version
+- `packaging/irix65/mcpserver.spec` — update `id` string
 - `packaging/irix62/mcpserver.spec` — same
 - `packaging/irix53/mcpserver.spec` — same
 - `Makefile` — update `PKG_VERSION`
-- `README.md` — update status line
+- `README.md` — update version/status line
 - `AGENTS.md` — update tool count if changed
 
-Check that any new `.c` files are added to:
-- `CORE_SRCS` in Makefile (used by irix65 and irix62 via `$(DAEMON_ALL)`)
-- `irix53-native` compile list (individual `cc` lines) AND link commands
+If new `.c` files were added, update:
+- `CORE_SRCS` in Makefile (irix65 and irix62 compile from this list)
+- `irix53-native` compile list in Makefile (individual `cc` lines)
+- `irix53-native` link commands in Makefile (add the new `.o`)
 
 ---
 
-## Step 2 — Commit and push to GitHub
+## Step 2 — Initial commit and push to GitHub
 
 ```sh
 git add <changed files>
-git commit -m "vX.Y.Z: <summary>"
+git commit -m "vX.Y.Z: <summary of new features>"
 git push origin main
 ```
 
+This is the first of two commits. The second (housekeeping) comes after
+packaging. Do not tag yet.
+
 ---
 
-## Step 3 — Update IRIS emulator (irix53-native build)
+## Step 3 — Build and package irix53 on IRIS emulator
 
-The IRIS emulator runs IRIX 5.3 with IDO installed. Source lives at:
+IRIS runs IRIX 5.3 with IDO installed. It is not git-connected.
+Source is maintained manually at:
+
 ```
-/usr/people/shared/projects/mcpserver-irix/mcpserver/src
+/usr/people/shared/projects/mcpserver-irix/src
 ```
 
-**Update the source files on IRIS** using the irix-indy53 MCP server's
-`replace_text_file` / `create_text_file` tools. Write each changed file directly.
-No tar transfer needed — the MCP server can write files in place.
+Note: there is no `mcpserver/` subdirectory — the project root is the
+src parent directly.
 
-Files that typically change each release:
-- `src/core/protocol.c`
-- `src/compat/compat.h`
-- `Makefile`
-- Any new `.c`/`.h` files
+### 3a — Transfer updated source files to IRIS
 
-**Build on IRIS:**
+The irix-indy53 MCP server (`replace_text_file` / `create_text_file`)
+can write files directly, but has a content limit (~15 KB per write).
+Files larger than ~15 KB or containing many escaped characters must be
+transferred via scratch disk.
+
+**MCP write (small files — compat.h, headers, small .c files):**
+Use `replace_text_file` or `create_text_file` via the irix-indy53 MCP tools.
+
+**Scratch disk transfer (large files — protocol.c, tools_exec.c, Makefile):**
+
 ```sh
-# From IRIX 5.3 terminal (serial console port 8881, raw TCP)
-cd /usr/people/shared/projects/mcpserver-irix/mcpserver/src
+# Windows — create tar with paths relative to project root:
+tar cf /tmp/transfer.tar src/core/protocol.c Makefile   # add any changed files
+dd if=/tmp/transfer.tar of=C:/dev/tools/iris/images/5.3/scratch.raw \
+   bs=512 seek=8 conv=notrunc
+
+# IRIS 5.3 (PuTTY session, port 8881 raw TCP):
+cd /usr/people/shared/projects/mcpserver-irix
+dd if=/dev/rdsk/dks0d2vol bs=512 skip=8 count=<N> | tar xf -
+```
+
+Where `<N>` = ceil(tar_size / 512) + 10. The scratch disk can be written
+from Windows while IRIS is running — IRIS does not hold an exclusive lock.
+
+**TFTP is NOT reliable for host→guest transfers** on the current IRIS build.
+IRIS does not route arbitrary UDP to the host for unconfigured ports.
+Use scratch disk instead.
+
+### 3b — Build on IRIS 5.3
+
+```sh
+# IRIS 5.3 PuTTY session:
+cd /usr/people/shared/projects/mcpserver-irix
 make irix53-native SHELL=/bin/sh
+file mcpserverd mcpserver
+# expected: ELF 32-bit MSB mips-2 dynamic executable ... MIPS
 ```
 
-The build takes ~2 minutes. Output: `mcpserverd` and `mcpserver` in the src directory.
+The build takes ~2 minutes. Object files land at the project root — this
+is a known issue with the `irix53-native` target (cleanup tracked as
+future work: move .o files to `build/irix53/`).
 
-**Transfer irix53 binaries to Octane2 via SS/Outbox:**
+### 3c — Package on IRIS 5.3
+
+Transfer the packaging files from Windows to IRIS (spec, idb, config
+defaults, init script) via scratch disk if not already present:
+
 ```sh
-# From IRIX 5.3:
-cp mcpserverd mcpserver /path/to/SS/Outbox/irix53/
-# The Outbox syncs via Dropbox to Windows, then via Galaxy NFS to Octane2
-# On Octane2: copy from /nfs/galaxy/SS/Outbox/irix53/ to project staging dir
+# Windows:
+tar cf /tmp/pkg53.tar packaging/irix53/ scripts/mcpserverd.init
+dd if=/tmp/pkg53.tar of=C:/dev/tools/iris/images/5.3/scratch.raw \
+   bs=512 seek=8 conv=notrunc
+
+# IRIS 5.3:
+cd /usr/people/shared/projects/mcpserver-irix
+dd if=/dev/rdsk/dks0d2vol bs=512 skip=8 count=<N> | tar xf -
+make irix53-native-tardist SHELL=/bin/sh
+```
+
+The `irix53-native-tardist` target runs `gendist` using the IRIX 5.3 tools
+and produces `mcpserver-X.Y.Z-irix53.tardist` in the project root.
+It has no compile dependency — it packages whatever binaries are at the
+project root (built by `irix53-native`).
+
+### 3d — Transfer irix53 tardist to Windows
+
+```sh
+# IRIS 5.3:
+cd /usr/people/shared/projects/mcpserver-irix
+tar cf - mcpserver-X.Y.Z-irix53.tardist | dd of=/dev/rdsk/dks0d2s0 bs=512
+
+# Windows (read from scratch.raw):
+cd /tmp
+dd if=C:/dev/tools/iris/images/5.3/scratch.raw bs=512 skip=8 count=<N> \
+   | tar xf -
+cp mcpserver-X.Y.Z-irix53.tardist C:/dev/projects/mcpserver-irix/
+```
+
+### 3e — Transfer irix53 binaries to Octane2 via SS/Outbox
+
+```sh
+# Windows: copy binaries to SS/Outbox (Dropbox-backed)
+# First extract them from scratch.raw (same tar as §3d or a separate one)
+cp mcpserverd mcpserver S:/Outbox/irix53/
+# Wait for Dropbox sync to Galaxy
+# On Octane2: /nfs/galaxy/SS/Outbox/irix53/ will have the binaries
 ```
 
 ---
 
-## Step 4 — Update Octane2 source
+## Step 4 — Build and stage irix65 + irix62 on Octane2
 
-The Octane2 git repo at `/home/chris/src/mcpserver-irix` may have diverged from GitHub.
-
-**Update via scp from Windows:**
-```sh
-# From Windows (MSYS2 bash):
-scp src/core/tools_build.c src/core/tools_build.h \
-    src/core/protocol.c src/compat/compat.h \
-    root@speed.siliconsurf.net:/home/chris/src/mcpserver-irix/src/core/
-scp src/compat/compat.h root@speed.siliconsurf.net:/home/chris/src/mcpserver-irix/src/compat/
-```
-
-**Update Makefile on Octane2:** The Octane2 Makefile has extra targets (irix62-tardist,
-irix53-tardist) not on Windows. Update ONLY the CORE_SRCS and PKG_VERSION lines.
-Use `/usr/sgug/bin/perl` for scripted replacements (IRIX sh is too limited for complex sed).
-
----
-
-## Step 5 — Build irix65 and irix62 on Octane2
+Octane2 must be a clean clone of GitHub at this point:
 
 ```sh
+# If Octane2 is out of date, wipe and reclone:
 ssh root@speed.siliconsurf.net
-cd /home/chris/src/mcpserver-irix
+rm -rf /home/chris/src/mcpserver-irix
+cd /home/chris/src
+git clone https://github.com/lookoutforchris/mcpserver-irix.git
+```
 
-# Build irix65 first and stage binaries
+Build and stage — always irix65 first:
+
+```sh
+cd /home/chris/src/mcpserver-irix
+mkdir -p stage/irix65 stage/irix62 stage/irix53
+
+# irix65 — delete binaries first to force rebuild (make checks timestamps)
+rm -f mcpserverd mcpserver
 make irix65 > /home/chris/build65.log 2>&1
 cp mcpserverd mcpserver stage/irix65/
 file stage/irix65/mcpserverd   # must show N32 MIPS-IV
 
-# Build irix62 and stage binaries  
+# irix62 (overwrites root-level binaries — irix65 already staged)
 make irix62 > /home/chris/build62.log 2>&1
 cp mcpserverd mcpserver stage/irix62/
 file stage/irix62/mcpserverd   # must show N32 MIPS-III
 ```
 
-**Important:** irix62 build overwrites the root-level binaries. Always stage irix65
-first, then irix62. The `stage/` directory preserves both.
+**Use `sh -c '...'` for all SSH commands** — Octane2's default shell is
+csh and `2>&1` does not work in csh.
 
-**Use `sh -c '...'` for all SSH commands** — the Octane2 default shell is csh and
-`2>&1` redirection does not work in csh.
+**Always delete root-level binaries before `make irix65`** — if binaries
+exist from a previous build, make sees them as newer than the sources and
+skips the rebuild entirely, leaving the wrong ISA in the stage directory.
 
 ---
 
-## Step 6 — Stage all three binaries for packaging
+## Step 5 — Stage all three binaries
 
 ```sh
-# On Octane2 — copy irix53 binaries from SS/Outbox
+# On Octane2 — wait for Dropbox sync, then:
 cp /nfs/galaxy/SS/Outbox/irix53/mcpserverd stage/irix53/
 cp /nfs/galaxy/SS/Outbox/irix53/mcpserver  stage/irix53/
-file stage/irix53/mcpserverd  # must show O32 MIPS-II
+file stage/irix53/mcpserverd   # must show MIPS-II (O32)
+
+# Verify all three:
+file stage/irix65/mcpserverd   # N32 MIPS-IV
+file stage/irix62/mcpserverd   # N32 MIPS-III
+file stage/irix53/mcpserverd   # MIPS-II O32
 ```
 
 ---
 
-## Step 7 — Update packaging files and run tardist
+## Step 6 — Package irix65 and irix62 on Octane2
 
-Update version in spec files if not done already:
-- `packaging/irix65/mcpserver.spec`
-- `packaging/irix62/mcpserver.spec`
-- `packaging/irix53/mcpserver.spec`
-
-The IDB files reference source paths relative to the project root. Binaries are
-referenced as `mcpserverd` and `mcpserver` (the root-level binaries). Before each
-tardist, copy the correct staged binaries to the project root:
+The IDB files reference binaries as `mcpserverd` / `mcpserver` at the
+project root. Copy staged binaries to root before each tardist.
 
 ```sh
-# irix65 tardist
+cd /home/chris/src/mcpserver-irix
+
+# irix65
 cp stage/irix65/mcpserverd stage/irix65/mcpserver .
 make tardist
 
-# irix62 tardist
+# irix62
 cp stage/irix62/mcpserverd stage/irix62/mcpserver .
 make irix62-tardist
-
-# irix53 tardist  
-cp stage/irix53/mcpserverd stage/irix53/mcpserver .
-make irix53-tardist
 ```
 
-Output: `mcpserver-X.Y.Z-irix65.tardist`, `irix62.tardist`, `irix53.tardist`
+The irix53 tardist is already done (built on IRIS in §3).
 
 ---
 
-## Step 8 — Resolve git history and commit
-
-The Octane2's repo was independently `git init`-ed (not cloned from GitHub). Its
-history is unrelated to GitHub's. To unify:
+## Step 7 — Bring tardists to Windows
 
 ```sh
-# On Octane2:
-git add -A
-git commit -m "vX.Y.Z: <message>"
-
-# Force-push to GitHub (since we own both sides and the Octane2 has the
-# complete combined state)
-git push --force origin main
+# From Windows (MSYS2 bash):
+cd /c/dev/projects/mcpserver-irix
+scp root@speed.siliconsurf.net:/home/chris/src/mcpserver-irix/mcpserver-X.Y.Z-*.tardist .
+# irix53.tardist is already here from §3d
 ```
 
-Then on Windows:
+Verify all three are present:
 ```sh
-git fetch origin
-git reset --hard origin/main
+ls -lh mcpserver-X.Y.Z-*.tardist
 ```
 
 ---
 
-## Step 9 — Tag and verify
+## Step 8 — Housekeeping commit and tag
+
+Update anything that needs a second pass (packaging spec version strings
+are commonly missed in the first commit):
 
 ```sh
-# On Octane2 (or Windows after sync):
+git add packaging/irix65/mcpserver.spec packaging/irix62/mcpserver.spec \
+        packaging/irix53/mcpserver.spec Makefile   # plus any other changes
+git commit -m "vX.Y.Z: packaging and release housekeeping"
 git tag vX.Y.Z
+git push origin main
 git push origin vX.Y.Z
 ```
 
-Verify on GitHub: check that the release commit contains all three tardist targets
-in the Makefile and the correct PKG_VERSION.
+---
+
+## Step 9 — Create the GitHub Release
+
+Copy tardists to `release-assets/` (gitignored — local only):
+
+```sh
+cp mcpserver-X.Y.Z-*.tardist release-assets/
+```
+
+Create the formal release with all three tardists attached:
+
+```sh
+gh release create vX.Y.Z \
+  release-assets/mcpserver-X.Y.Z-irix65.tardist \
+  release-assets/mcpserver-X.Y.Z-irix62.tardist \
+  release-assets/mcpserver-X.Y.Z-irix53.tardist \
+  --title "vX.Y.Z — <one-line summary>" \
+  --notes "<release notes>"
+```
+
+Verify the release appears at:
+`https://github.com/lookoutforchris/mcpserver-irix/releases`
+
+---
+
+## Step 10 — Refresh Octane2 from GitHub
+
+Now that GitHub is authoritative, bring Octane2 into sync:
+
+```sh
+ssh root@speed.siliconsurf.net
+rm -rf /home/chris/src/mcpserver-irix
+cd /home/chris/src
+git clone https://github.com/lookoutforchris/mcpserver-irix.git
+```
+
+---
+
+## Step 11 — Install on Octane2 and IRIS
+
+**Octane2:**
+```sh
+cd /home/chris/src/mcpserver-irix
+rm -f mcpserverd mcpserver
+make irix65
+make install
+mcpserver version   # confirm new version
+```
+
+**IRIS 5.3 (PuTTY session):**
+```sh
+# Binaries are already at the project root from §3b
+cp /usr/people/shared/projects/mcpserver-irix/mcpserverd /usr/sbin/mcpserverd
+cp /usr/people/shared/projects/mcpserver-irix/mcpserver  /usr/bin/mcpserver
+chmod 755 /usr/sbin/mcpserverd /usr/bin/mcpserver
+mcpserver version   # confirm new version
+```
+
+---
+
+## Step 12 — Basic testing
+
+**On Octane2** (via irix-octane2 MCP tools or SSH):
+```sh
+mcpserver ping
+mcpserver status
+mcpserver version
+```
+
+**On IRIS 5.3** (via irix-indy53 MCP tools):
+- `ping` — confirms server identity and version string
+- `list_directory` on the project root
+- `run_inspect_command` with `uname -a`
 
 ---
 
@@ -211,14 +349,17 @@ in the Makefile and the correct PKG_VERSION.
 
 | Problem | Solution |
 |---|---|
-| irix62 build overwrites irix65 binaries | Always stage irix65 first, then irix62 |
+| irix62 build overwrites irix65 binaries | Always stage irix65 first; delete root binaries before `make irix65` |
+| `make irix65` says "Nothing to be done" | Delete `mcpserverd` and `mcpserver` first — make checks timestamps |
 | `2>&1` fails in csh on Octane2 | Use `sh -c '...'` for all SSH commands |
-| IRIX sh can't handle complex sed patterns | Use `/usr/sgug/bin/perl` for file edits |
-| Unicode characters in Python scripts crash on cp1252 | Replace `→` with `->` etc. |
 | `make irix53-native` fails on csh command line limits | Always pass `SHELL=/bin/sh` |
-| Octane2 MCP tool calls fail silently | Test with ping first; check `mcpserver status` |
-| Port 69 (TFTP) needs admin | Use `--port 6969`; IRIX tftp supports custom ports |
-| NFS `ls` only works once per mount on IRIX 5.3 | Known IRIX 5.3 kernel limitation; access files by name after first ls |
+| Large files fail via MCP `replace_text_file` | Use scratch disk for files > ~15 KB |
+| TFTP transfers time out | IRIS does not route unconfigured UDP ports; use scratch disk instead |
+| `inst` on IRIX 5.3 says "bad product" for irix53 tardist | Package was built with 6.5 gendist — must use `irix53-native-tardist` on IRIS 5.3 |
+| gendist spec says wrong version | Update `id` string in all three `.spec` files (irix65, irix62, irix53) |
+| GitHub shows old release as latest | Use `gh release create` — git tag alone does not create a GitHub Release |
+| NFS `ls` only works once per mount on IRIX 5.3 | Known kernel limitation; access files by name after first ls |
+| IRIS won't boot after rebuilding from source | Re-run NVRAM setup: `setenv -f eaddr 08:00:69:de:ad:53` then `rtc save` |
 
 ---
 
@@ -227,13 +368,20 @@ in the Makefile and the correct PKG_VERSION.
 | Item | Path |
 |---|---|
 | Windows project | `C:\dev\projects\mcpserver-irix` |
-| Octane2 project | `/home/chris/src/mcpserver-irix` |
-| IRIS emulator source | `/usr/people/shared/projects/mcpserver-irix/mcpserver/src` |
-| TFTP server | `C:\dev\tools\tftpd\tftpd.py` |
-| NFS proxy | `C:\dev\projects\mcpserver-irix\scripts\nfs-proxy.py` |
+| Octane2 project | `/home/chris/src/mcpserver-irix` (always a clean clone) |
+| IRIS emulator project | `/usr/people/shared/projects/mcpserver-irix` |
+| IRIS emulator source | `/usr/people/shared/projects/mcpserver-irix/src` |
+| Release assets (local) | `C:\dev\projects\mcpserver-irix\release-assets\` (gitignored) |
+| SS/Outbox (Windows) | `S:\Outbox` |
+| SS/Outbox (Octane2) | `/nfs/galaxy/SS/Outbox` |
+| Scratch disk image | `C:\dev\tools\iris\images\5.3\scratch.raw` |
+| Scratch disk (IRIX r/w) | `/dev/rdsk/dks0d2s0` (partition 0, sector 0) |
+| Scratch disk (whole vol) | `/dev/rdsk/dks0d2vol` (include VH; skip=8 from Windows) |
+| Scratch payload offset | Byte 4096 / sector 8 in scratch.raw |
+| TFTP server | `C:\dev\tools\tftpd\tftpd.py --port 6969 --dir <dir>` |
+| NFS proxy | `scripts/nfs-proxy.py` (required before IRIX NFS mount) |
 | unfsd binary | `C:\dev\tools\unfs3\unfsd.exe` |
-| IRIS shared folder | `C:\dev\tools\iris\shared` |
-| SS/Outbox (Dropbox) | `S:\Outbox` (Windows) / `/nfs/galaxy/SS/Outbox` (Octane2) |
+| IRIS shared folder | `C:\dev\tools\iris\shared\` |
 | Octane2 SSH | `root@speed.siliconsurf.net` |
-| IRIS serial console | `telnet localhost 8881` (raw TCP, not telnet protocol) |
+| IRIS serial console | Raw TCP `localhost:8881` (PuTTY: Raw mode, local echo off) |
 | IRIS monitor | `telnet localhost 8888` |
