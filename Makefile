@@ -272,6 +272,12 @@ CONF_DIR   = /etc/mcpserver
 #   mcpserver enable                  (enable + start in one step)
 # ---------------------------------------------------------------
 install: all
+	@echo "=== Stopping daemon if running ==="
+	@if [ -f /var/run/mcpserverd.pid ]; then \
+		kill -TERM `cat /var/run/mcpserverd.pid` 2>/dev/null; \
+		sleep 1; \
+		echo "  stopped mcpserverd"; \
+	fi
 	@echo "=== Installing binaries ==="
 	cp mcpserverd /usr/sbin/mcpserverd
 	chmod 755 /usr/sbin/mcpserverd
