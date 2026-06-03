@@ -90,7 +90,7 @@ These apply to all code in `src/core/`, `src/daemon/`, and `src/cli/`:
 | Handle `EWOULDBLOCK` as identical to `EAGAIN` | Same value on IRIX; old releases used EWOULDBLOCK |
 | Keep socket path ≤ 104 bytes | Conservative `sun_path` limit across all targets |
 
-Portability questions that cannot be answered from documentation go into `docs/OPEN_QUESTIONS.md`, not silently into the code.
+Portability questions that cannot be answered from documentation go into `docs/PORTABILITY_MATRIX.md` §8 (Open Questions), not silently into the code.
 
 ---
 
@@ -128,9 +128,9 @@ Before starting any implementation task:
 3. Implement only the scoped task. Do not refactor surrounding code opportunistically.
 4. After implementation, run or update tests in `tests/unit/` and `tests/protocol/`.
 5. Summarize what changed.
-6. Record any unresolved portability assumptions in `docs/OPEN_QUESTIONS.md`.
+6. Record any unresolved portability assumptions in `docs/PORTABILITY_MATRIX.md` §8.
 
-When uncertain about IRIX behavior, check `docs/PORTABILITY_MATRIX.md` first. If not answered there, add to `docs/OPEN_QUESTIONS.md` and flag for human review rather than guessing.
+When uncertain about IRIX behavior, check `docs/PORTABILITY_MATRIX.md` first. If not answered there, add to §8 of that doc and flag for human review rather than guessing.
 
 ---
 
@@ -170,5 +170,7 @@ This rule applies even when IRIX appears idle at a login prompt. Uncontrolled ki
 | IRIS emulator setup | `docs/IRIS_EMULATOR_SETUP.md` | IRIS emulator setup, file transfer, known bugs |
 | Octane2 operations | `docs/OCTANE2_OPERATIONS.md` | Octane2 system notes, NFS layout, boot sequence |
 | Release workflow | `docs/RELEASE_WORKFLOW.md` | Full build/package/release procedure for all three targets |
+| Future work / design notes | `docs/FUTURE.md` | Deferred features, partly-implemented designs, restoration paths |
+| IRIX packaging reference | `docs/reference/IRIX_SOFTWARE_PACKAGING.md` | General IRIX tardist/gendist/spec/IDB primer (not project-specific) |
 | IRIS upstream bugs | `docs/iris-bugs/` | Detailed bug reports filed or pending with the IRIS project |
 | Project plan (historical) | `docs/archive/PROJECT_PLAN.md` | Original pre-build planning document — for reference only |

@@ -52,7 +52,7 @@ typedef unsigned int         uint32_t;
  * Size limits used throughout the project.
  */
 #define MCPSERVER_PATH_MAX   1024   /* max path length in any API */
-#define MCPSERVER_VERSION    "0.3.1"
+#define MCPSERVER_VERSION    "0.3.2"
 
 /*
  * mcp_realpath - portable path canonicalization.

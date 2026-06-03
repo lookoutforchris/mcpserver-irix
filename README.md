@@ -6,7 +6,7 @@ Gives modern AI coding agents (Claude Code, Codex) safe, bounded access to an IR
 
 No public HTTP listener. No OAuth. No cloud service. Transport security is SSH.
 
-**Status: v0.3.1 — fully functional on IRIX 6.5, 6.2, and 5.3. 23 MCP tools including build/compile/run. Man pages included.**
+**Status: v0.3.2 — fully functional on IRIX 6.5, 6.2, and 5.3. 17 MCP tools including build/compile/run. Man pages included.**
 
 ---
 
@@ -20,7 +20,7 @@ This guide assumes you are a newcomer to this software. Follow each step in orde
 - Your IRIX machine's **IP address or hostname** (e.g., `192.168.1.50` or `octane.local`)
 - A **Windows 10/11 or macOS** workstation on the same local network
 - **Claude Code** (or another MCP-capable AI client such as Codex) installed on your Windows/Mac workstation
-- The `mcpserver-0.1.0-irix65.tardist` file (download from the [GitHub releases page](https://github.com/lookoutforchris/mcpserver-irix/releases))
+- The `mcpserver-0.3.1-irix65.tardist` file (download from the [GitHub releases page](https://github.com/lookoutforchris/mcpserver-irix/releases))
 - SSH access to the IRIX machine (password login is fine for setup; we will configure key-based login below)
 
 ---
@@ -92,7 +92,7 @@ Copy the tardist file to your IRIX machine:
 
 ```sh
 # From your Windows/Mac workstation
-scp mcpserver-0.1.0-irix65.tardist root@192.168.1.50:/tmp/
+scp mcpserver-0.3.1-irix65.tardist root@192.168.1.50:/tmp/
 ```
 
 SSH into your IRIX machine and install:
@@ -101,7 +101,7 @@ SSH into your IRIX machine and install:
 ssh root@192.168.1.50
 
 # Install using IRIX inst (the standard IRIX package installer)
-inst -f /tmp/mcpserver-0.1.0-irix65.tardist
+inst -f /tmp/mcpserver-0.3.1-irix65.tardist
 
 # At the Inst> prompt, type:
 go
@@ -216,7 +216,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 
 A successful response looks like:
 ```json
-{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"irix-mcpserver","version":"0.1.0"}}}
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"irix-mcpserver","version":"0.3.1"}}}
 ```
 
 ---
@@ -237,10 +237,13 @@ For operational logs, run `mcpserver logs` or check `/var/adm/SYSLOG` on the IRI
 
 ## What the AI Agent Can Do
 
-Once connected, the AI agent has access to 15 MCP tools organized into three categories:
+Once connected, the AI agent has access to 17 MCP tools organized into three categories:
 
 **Read / Inspect (always available):**
-`ping` · `path_exists` · `stat_path` · `list_directory` · `read_text_file` · `tail_text_file` · `search_text` · `read_text_around_pattern` · `safe_json_preview` · `run_inspect_command`
+`ping` · `path_exists` · `stat_path` · `list_directory` · `read_text_file` · `tail_text_file` · `search_text` · `read_text_around_pattern` · `safe_json_preview`
+
+**Execution (advertised always; full profile required to invoke):**
+`run_inspect_command` (37 whitelisted system tools including `ls`, `grep`, `hinv`, `man`) · `run_build_command` (`cc`, `make`, `ar`, `tar`, `gendist`, `inst`, etc.) · `run_program` (run a compiled binary inside a policy root)
 
 **Write (read-write projects only):**
 `create_text_file` · `replace_text_file` · `make_directory` · `delete_text_file` · `rename_path`
@@ -324,9 +327,9 @@ See [`docs/PORTABILITY_MATRIX.md`](docs/PORTABILITY_MATRIX.md) for IRIX 6.2 and 
 
 | Platform | ABI | ISA | Compiler | Status |
 |---|---|---|---|---|
-| IRIX 6.5 | N32 | MIPS-IV | MIPSpro 7.4 | **Shipping (v0.2.0)** |
-| IRIX 6.2 | N32 | MIPS-III | MIPSpro | Planned |
-| IRIX 5.3 | O32 | MIPS-II | IDO ucode `cc` | **Shipping (v0.2.0)** |
+| IRIX 6.5 | N32 | MIPS-IV | MIPSpro 7.4 | **Shipping (v0.3.1)** |
+| IRIX 6.2 | N32 | MIPS-III | MIPSpro 7.4 (cross-compiled on 6.5) | **Shipping (v0.3.1)** |
+| IRIX 5.3 | O32 | MIPS-II | IDO ucode `cc` | **Shipping (v0.3.1)** |
 
 ---
 
@@ -335,7 +338,7 @@ See [`docs/PORTABILITY_MATRIX.md`](docs/PORTABILITY_MATRIX.md) for IRIX 6.2 and 
 | Document | Purpose |
 |---|---|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Component design, IPC, install paths, service integration |
-| [`docs/TOOL_CONTRACT.md`](docs/TOOL_CONTRACT.md) | All 15 MCP tool specifications and return formats |
+| [`docs/TOOL_CONTRACT.md`](docs/TOOL_CONTRACT.md) | All 17 MCP tool specifications and return formats |
 | [`docs/CONFIG_SCHEMA.md`](docs/CONFIG_SCHEMA.md) | `projects.json` and `boundaries.json` schemas |
 | [`docs/SECURITY_MODEL.md`](docs/SECURITY_MODEL.md) | Path policy, write policy, command policy |
 | [`docs/PORTABILITY_MATRIX.md`](docs/PORTABILITY_MATRIX.md) | Per-target compiler/ABI/syscall facts |

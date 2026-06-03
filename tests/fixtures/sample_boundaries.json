@@ -19,12 +19,5 @@
   },
   "read_rules": {
     "deny_read_globs": ["**/.env","**/.env.*","**/*.secret","**/*.key","**/*.pem"]
-  },
-  "shell_rules": {
-    "allowed_commands": ["pwd","ls","find","cat","grep","head","tail","sed","wc","stat"],
-    "allow_shell": false,
-    "allow_pipes": false,
-    "allow_redirects": false,
-    "allow_glob_expansion": false
   }
 }

@@ -1,7 +1,7 @@
 param(
     [string]$ConfigPath = ".mcp.json",
     [string]$ServerName = "irix-octane2",
-    [string]$ProjectRoot = "/home/chris/src/mcpserver-irix",
+    [string]$ProjectRoot = "/home/work/projects/mcpserver-irix",
     [string]$TestRootName = ".mcp-test",
     [int]$TimeoutMs = 5000,
     [switch]$IncludeBridgeRoughEdges

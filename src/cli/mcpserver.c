@@ -301,19 +301,6 @@ boundaries_generate(const struct project_list *pl, char *out, int outsz)
     bcat(out, &n, outsz,
         "  \"read_rules\": {\n"
         "    \"deny_read_globs\": []\n"
-        "  },\n");
-
-    bcat(out, &n, outsz,
-        "  \"shell_rules\": {\n"
-        "    \"allowed_commands\": "
-        "[\"pwd\",\"ls\",\"find\",\"cat\",\"grep\","
-        "\"head\",\"tail\",\"sed\",\"wc\",\"stat\","
-        "\"diff\",\"nm\",\"file\",\"size\",\"strings\","
-        "\"uname\",\"ps\",\"df\"],\n"
-        "    \"allow_shell\": false,\n"
-        "    \"allow_pipes\": false,\n"
-        "    \"allow_redirects\": false,\n"
-        "    \"allow_glob_expansion\": false\n"
         "  }\n"
         "}\n");
 
@@ -629,8 +616,8 @@ cmd_validate(void)
     }
     unlink(tmp);
 
-    printf("OK: %d project(s), %d rw root(s), %d ro root(s), %d cmd(s)\n",
-           pl.count, p.rw_count, p.ro_count, p.cmd_count);
+    printf("OK: %d project(s), %d rw root(s), %d ro root(s)\n",
+           pl.count, p.rw_count, p.ro_count);
     return 0;
 }
 

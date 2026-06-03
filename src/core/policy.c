@@ -203,17 +203,9 @@ policy_load(const char *path, struct policy *p)
         if (p->read_deny_count < 0) p->read_deny_count = 0;
     }
 
-    /* shell_rules sub-object */
-    if (json_get_object(buf, "shell_rules", sub, sizeof(sub)) == 0) {
-        p->cmd_count = json_get_string_array(sub, "allowed_commands",
-                           (char *)p->allowed_cmds, 32, POLICY_CMDS_MAX);
-        if (p->cmd_count < 0) p->cmd_count = 0;
-    }
-
     syslog(LOG_INFO,
-           "policy_load: loaded %s (rw=%d ro=%d deny=%d cmds=%d profile=%s)",
-           path, p->rw_count, p->ro_count, p->deny_count,
-           p->cmd_count, p->profile);
+           "policy_load: loaded %s (rw=%d ro=%d deny=%d profile=%s)",
+           path, p->rw_count, p->ro_count, p->deny_count, p->profile);
     return 0;
 }
 
@@ -310,17 +302,6 @@ policy_is_path_in_rw_root(const struct policy *p, const char *path)
                           p->rw_count, canonical);
 }
 
-int
-policy_is_cmd_allowed(const struct policy *p, const char *command)
-{
-    int i;
-    if (!p || !command) return 0;
-    for (i = 0; i < p->cmd_count; i++) {
-        if (strcmp(p->allowed_cmds[i], command) == 0)
-            return 1;
-    }
-    return 0;
-}
 
 int
 policy_is_full_profile(const struct policy *p)

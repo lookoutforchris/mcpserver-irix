@@ -196,30 +196,41 @@ irix53:
 #   make irix53-native SHELL=/bin/sh
 # ---------------------------------------------------------------
 CFLAGS_IDO = -o32 -mips2 -O2 -ansi -fullwarn -D_SGI_SOURCE -D_POSIX_SOURCE -D_BSD_TYPES
+IDO_BUILD  = $(BUILDDIR)/irix53
 
 irix53-native:
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/compat/snprintf.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/compat/realpath.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/compat/fnmatch.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/json.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/policy.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/protocol.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_fs.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_text.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_write.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_exec.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_build.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/daemon/ipc.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/daemon/mcpserverd.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/cli/stdio_bridge.c
-	cc $(CFLAGS_IDO) $(INCLUDES) -c src/cli/mcpserver.c
-	cc -o32 -o mcpserverd snprintf.o realpath.o fnmatch.o \
-		json.o policy.o protocol.o tools_fs.o tools_text.o \
-		tools_write.o tools_exec.o tools_build.o ipc.o mcpserverd.o
-	cc -o32 -o mcpserver snprintf.o realpath.o fnmatch.o \
-		json.o policy.o protocol.o tools_fs.o tools_text.o \
-		tools_write.o tools_exec.o tools_build.o ipc.o stdio_bridge.o mcpserver.o
-	@echo "=== irix53-native build complete ==="
+	@mkdir -p $(IDO_BUILD)
+	@echo "=== Compiling sources (O32 MIPS-II IDO) ==="
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/compat/snprintf.c -o $(IDO_BUILD)/snprintf.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/compat/realpath.c -o $(IDO_BUILD)/realpath.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/compat/fnmatch.c  -o $(IDO_BUILD)/fnmatch.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/json.c       -o $(IDO_BUILD)/json.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/policy.c     -o $(IDO_BUILD)/policy.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/protocol.c   -o $(IDO_BUILD)/protocol.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_fs.c   -o $(IDO_BUILD)/tools_fs.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_text.c -o $(IDO_BUILD)/tools_text.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_write.c -o $(IDO_BUILD)/tools_write.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_exec.c -o $(IDO_BUILD)/tools_exec.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/core/tools_build.c -o $(IDO_BUILD)/tools_build.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/daemon/ipc.c      -o $(IDO_BUILD)/ipc.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/daemon/mcpserverd.c -o $(IDO_BUILD)/mcpserverd.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/cli/stdio_bridge.c -o $(IDO_BUILD)/stdio_bridge.o
+	cc $(CFLAGS_IDO) $(INCLUDES) -c src/cli/mcpserver.c   -o $(IDO_BUILD)/mcpserver.o
+	@echo "=== Linking mcpserverd ==="
+	cc -o32 -o mcpserverd \
+		$(IDO_BUILD)/snprintf.o $(IDO_BUILD)/realpath.o $(IDO_BUILD)/fnmatch.o \
+		$(IDO_BUILD)/json.o $(IDO_BUILD)/policy.o $(IDO_BUILD)/protocol.o \
+		$(IDO_BUILD)/tools_fs.o $(IDO_BUILD)/tools_text.o $(IDO_BUILD)/tools_write.o \
+		$(IDO_BUILD)/tools_exec.o $(IDO_BUILD)/tools_build.o \
+		$(IDO_BUILD)/ipc.o $(IDO_BUILD)/mcpserverd.o
+	@echo "=== Linking mcpserver ==="
+	cc -o32 -o mcpserver \
+		$(IDO_BUILD)/snprintf.o $(IDO_BUILD)/realpath.o $(IDO_BUILD)/fnmatch.o \
+		$(IDO_BUILD)/json.o $(IDO_BUILD)/policy.o $(IDO_BUILD)/protocol.o \
+		$(IDO_BUILD)/tools_fs.o $(IDO_BUILD)/tools_text.o $(IDO_BUILD)/tools_write.o \
+		$(IDO_BUILD)/tools_exec.o $(IDO_BUILD)/tools_build.o \
+		$(IDO_BUILD)/ipc.o $(IDO_BUILD)/stdio_bridge.o $(IDO_BUILD)/mcpserver.o
+	@echo "=== irix53-native build complete (objects in $(IDO_BUILD)/) ==="
 
 # ---------------------------------------------------------------
 # ISA verification
@@ -298,14 +309,25 @@ install: all
 	else \
 		echo "  $(CONF_DIR) already exists"; \
 	fi
-	@echo "=== Registering with chkconfig (disabled) ==="
-	-/sbin/chkconfig -f mcpserver off
+	@echo "=== Registering with chkconfig (preserving existing state) ==="
+	@if [ -f /var/config/mcpserver ]; then \
+		echo "  preserved existing setting: `cat /var/config/mcpserver`"; \
+	else \
+		/sbin/chkconfig -f mcpserver off; \
+		echo "  registered as off (fresh install — use 'mcpserver enable' to start at boot)"; \
+	fi
 	@echo ""
-	@echo "Installation complete.  To enable and start:"
-	@echo "  mcpserver enable"
-	@echo "or:"
-	@echo "  /sbin/chkconfig -f mcpserver on"
-	@echo "  /etc/init.d/mcpserverd start"
+	@echo "Installation complete."
+	@if [ -f /var/config/mcpserver ] && [ "`cat /var/config/mcpserver`" = "on" ]; then \
+		echo "Service is enabled at boot. Restart now with:"; \
+		echo "  mcpserver restart"; \
+	else \
+		echo "To enable and start:"; \
+		echo "  mcpserver enable"; \
+		echo "or:"; \
+		echo "  /sbin/chkconfig -f mcpserver on"; \
+		echo "  /etc/init.d/mcpserverd start"; \
+	fi
 
 # ---------------------------------------------------------------
 # Tardist packaging (IRIX 6.5)
@@ -320,7 +342,7 @@ install: all
 #   inst -f mcpserver-0.1.0-irix65.tardist
 # or drag-and-drop into Software Manager.
 # ---------------------------------------------------------------
-PKG_VERSION      = 0.3.1
+PKG_VERSION      = 0.3.2
 TARDIST          = mcpserver-$(PKG_VERSION)-irix65.tardist
 TARDIST_IRIX62   = mcpserver-$(PKG_VERSION)-irix62.tardist
 TARDIST_IRIX53   = mcpserver-$(PKG_VERSION)-irix53.tardist

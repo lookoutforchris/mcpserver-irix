@@ -1,7 +1,7 @@
 # mcpserver-irix Release Workflow
 
 End-to-end procedure for building and releasing a new version across all three
-IRIX targets. Based on the v0.3.0 release cycle (2026-05-29).
+IRIX targets. Refined across the v0.3.0 and v0.3.1 release cycles (2026-05-29).
 
 ---
 
@@ -110,9 +110,8 @@ file mcpserverd mcpserver
 # expected: ELF 32-bit MSB mips-2 dynamic executable ... MIPS
 ```
 
-The build takes ~2 minutes. Object files land at the project root — this
-is a known issue with the `irix53-native` target (cleanup tracked as
-future work: move .o files to `build/irix53/`).
+The build takes ~2 minutes. Object files land in `build/irix53/` (fixed
+in v0.3.2; earlier versions scattered them at the project root).
 
 ### 3c — Package on IRIS 5.3
 

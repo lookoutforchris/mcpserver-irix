@@ -19,7 +19,6 @@
 #define POLICY_DENY_MAX       256
 #define POLICY_EXT_MAX        64
 #define POLICY_NAME_MAX       32
-#define POLICY_CMDS_MAX       32
 #define POLICY_PATTERN_MAX    256
 
 /*
@@ -54,10 +53,6 @@ struct policy {
     char allow_name[POLICY_NAME_MAX][64];
     int  allow_name_count;
 
-    /* allowed shell commands */
-    char allowed_cmds[POLICY_CMDS_MAX][32];
-    int  cmd_count;
-
     /* tool profile: "full" or "readonly" */
     char profile[16];
 };
@@ -91,12 +86,6 @@ int policy_is_read_allowed(const struct policy *p, const char *path);
  * Returns 1 if allowed, 0 if denied.
  */
 int policy_is_write_allowed(const struct policy *p, const char *path);
-
-/*
- * policy_is_cmd_allowed - check if command is in the allowed list.
- * Returns 1 if allowed, 0 if denied.
- */
-int policy_is_cmd_allowed(const struct policy *p, const char *command);
 
 /*
  * policy_is_full_profile - returns 1 if profile is "full".

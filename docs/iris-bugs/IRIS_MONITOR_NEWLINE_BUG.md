@@ -1,5 +1,10 @@
 # Bug Report: IRIS Monitor — Inconsistent Line Endings Between Banner and Command Output
 
+> **Status: Fixed upstream.** Resolved by hanshuebner/iris PR #24 (telnet
+> translation layer for serial + monitor TCP listeners). Verified on
+> techomancer/iris main 2026-05-30 — `help` response now uses 90 CRLF
+> sequences with zero bare LF. Filed as upstream issue #22.
+
 **Project:** IRIS (Inaccurate Rust Iris System Monitor)
 **Component:** Monitor TCP interface (port 8888)
 **Severity:** Minor — usability issue; workaround exists

@@ -1,16 +1,18 @@
-# IRIX MCP Server — Tool Contract v1
+# IRIX MCP Server — Tool Contract
 
 This document is the authoritative specification for all MCP tools exposed by the IRIX MCP server. It is the behavioral agreement across all IRIX target implementations, Codex/Claude expectations, and regression tests.
 
 **Tool profile:** The server operates in one of two profiles, set at daemon startup via config:
-- `readonly` — only read/inspect tools are available
-- `full` — all tools including write and command execution (default)
+- `readonly` — write tools are not advertised in `tools/list`; execution tools are advertised but reject calls at runtime
+- `full` — all tools advertised and callable (default)
+
+The current implementation reports `17` tools in the `full` profile (`12` in `readonly`).
 
 ---
 
 ## 1. Tool List
 
-### 1.1 Read / Inspect Tools (available in all profiles)
+### 1.1 Read / Inspect Tools (advertised in all profiles)
 
 | Tool | Description |
 |---|---|
@@ -23,9 +25,16 @@ This document is the authoritative specification for all MCP tools exposed by th
 | `search_text` | Substring/pattern search under a root |
 | `read_text_around_pattern` | Context lines around a pattern match |
 | `safe_json_preview` | Preview JSON structure without full content |
-| `run_inspect_command` | Constrained shell command execution |
 
-### 1.2 Write / Path Tools (full profile only)
+### 1.2 Execution Tools (advertised in all profiles; callable only in `full`)
+
+| Tool | Description |
+|---|---|
+| `run_inspect_command` | Whitelisted inspection commands (ls, find, grep, hinv, man, etc.) |
+| `run_build_command` | Whitelisted build/packaging tools (cc, make, ar, tar, gendist, inst, etc.) |
+| `run_program` | Run a compiled binary or test executable within a policy root |
+
+### 1.3 Write / Path Tools (full profile only)
 
 | Tool | Description |
 |---|---|
@@ -50,12 +59,12 @@ Returns server identity and confirms the daemon is reachable.
 {
   "ok": true,
   "server": "irix-mcpserver",
-  "version": "0.1.0",
-  "project_name": "irix-mcpserver",
-  "boundaries_path": "/etc/mcpserver/boundaries.json",
+  "version": "0.3.1",
   "profile": "full"
 }
 ```
+
+The `version` field tracks `MCPSERVER_VERSION` in `src/compat/compat.h` and is bumped each release.
 
 ---
 
@@ -253,7 +262,7 @@ Reads a JSON file and returns a preview of its structure.
 
 ### `run_inspect_command(command, args)`
 
-Executes a single allowed command with validated arguments. **Full profile only.**
+Executes a single allowed inspection command with validated arguments. **Full profile only.**
 
 **Parameters:**
 - `command` (string, required) — must be in the allowed command list
@@ -278,7 +287,92 @@ Executes a single allowed command with validated arguments. **Full profile only.
 - No shell interpretation. Executed directly via `execv()` with explicit argument array.
 - Pipes, redirects, semicolons, and shell metacharacters in arguments are rejected.
 
-**Allowed commands and argument rules:** See `SECURITY_MODEL.md §4`.
+**Allowed commands** (as of v0.3.1) — defined in `src/core/tools_exec.c` `CMD_TABLE`:
+
+| Category | Commands |
+|---|---|
+| Filesystem inspection | `pwd`, `ls`, `find`, `cat`, `head`, `tail`, `wc`, `stat`, `file`, `du`, `df` |
+| Text inspection | `grep`, `sed`, `sort`, `diff`, `strings`, `od` |
+| Binary inspection | `nm`, `size`, `ldd`, `ar`, `what` |
+| System inspection | `uname`, `hinv`, `versions`, `uptime`, `w`, `ps`, `chkconfig` |
+| Network inspection | `netstat`, `ifconfig`, `rpcinfo`, `showmount`, `mount`, `umount` |
+| Process control | `kill` (signals only — no PID outside policy) |
+| Documentation | `man` (added v0.3.1 — arguments treated as page names, not file paths) |
+
+Per-command argument validation rules are in `SECURITY_MODEL.md §4`.
+
+---
+
+### `run_build_command(command, args, work_dir)`
+
+Runs a build, compile, link, or packaging tool inside a configured project root. Captures stdout/stderr with a longer output buffer and timeout than `run_inspect_command`. **Full profile only.** Added in v0.3.0.
+
+**Parameters:**
+- `command` (string, required) — must be in the allowed build tool list
+- `args` (array of strings, required) — passed verbatim except for shell-metacharacter rejection (`| & ; > < \n \r $ \``)
+- `work_dir` (string, optional) — working directory; must be within a configured policy root. Defaults to the daemon's cwd.
+
+**Returns:**
+```json
+{
+  "allowed": true,
+  "command": "make",
+  "args": ["irix65"],
+  "work_dir": "/home/work/projects/mcpserver-irix",
+  "stdout": "...",
+  "stderr": "...",
+  "exit_code": 0,
+  "truncated": false,
+  "error": null
+}
+```
+
+- Output buffer: 64 KB (vs 20 KB for `run_inspect_command`).
+- Timeout: 300 seconds.
+- Unlike `run_inspect_command`, arguments are NOT path-validated (compilers and `make` legitimately reference paths outside policy roots, e.g. `/usr/include`, `/opt/MIPSpro/lib`). Shell metacharacters are still rejected.
+- `work_dir` IS validated against policy roots.
+
+**Allowed commands** (as of v0.3.1) — defined in `src/core/tools_build.c` `BUILD_TABLE`:
+
+| Category | Commands |
+|---|---|
+| Compilers | `cc`, `c++`, `CC` |
+| Build systems | `make`, `gmake` |
+| Linkers / archivers | `ld`, `ar`, `ranlib` |
+| Binary tooling | `strip`, `elfdump`, `dis` |
+| Filesystem | `chmod`, `chown`, `cp`, `mv`, `ln`, `mkdir`, `rm`, `install` |
+| Archive | `tar`, `gzip`, `compress`, `uncompress` |
+| Packaging | `makedist`, `swpkg`, `inst`, `gendist` |
+
+---
+
+### `run_program(program, args, work_dir)`
+
+Executes a compiled program by absolute path within a policy root. Used for running test binaries, smoke-test helpers, or any locally-built executable. **Full profile only.** Added in v0.3.0.
+
+**Parameters:**
+- `program` (string, required) — absolute path; must be within a configured policy root
+- `args` (array of strings, required) — passed verbatim except for shell-metacharacter rejection
+- `work_dir` (string, optional) — working directory; must be within a configured policy root
+
+**Returns:**
+```json
+{
+  "allowed": true,
+  "program": "/home/work/projects/myproj/build/test_runner",
+  "args": ["--verbose"],
+  "work_dir": "/home/work/projects/myproj",
+  "stdout": "...",
+  "stderr": "",
+  "exit_code": 0,
+  "truncated": false,
+  "error": null
+}
+```
+
+- Output buffer: 64 KB. Timeout: 300 seconds.
+- The program path is validated against policy roots before execution. Programs outside roots cannot be invoked (this prevents running arbitrary system binaries via this tool — use `run_inspect_command` or `run_build_command` for whitelisted system tools).
+- The file must exist and be executable (`stat` + `x` permission check) before fork/exec.
 
 ---
 
@@ -420,13 +514,30 @@ Renames a file or directory. **Full profile only.**
 
 ---
 
-## 5. Explicitly Out of Scope for v1
+## 5. Explicitly Out of Scope
 
-- Arbitrary shell execution (no `sh -c`, no pipes, no redirection)
-- Binary file read or write
-- PDF-specific tools
-- Resources, prompts, or MCP extensions beyond `tools/list` and `tools/call`
-- Authentication or access tokens
-- Public network exposure
-- Recursive directory deletion
-- Symbolic link creation
+These are deliberate design choices, not gaps to be filled. They apply to the current 0.3.x line and any successor release unless explicitly revisited.
+
+### Execution surface
+- Arbitrary shell execution. No `sh -c`, no pipes, no redirection, no shell expansion of any kind. Commands always go through `execv()` with an explicit argument array against an allowlisted binary table.
+- Argument metacharacters (`| & ; > < \n \r $ \``) are rejected by every execution tool, even for build commands that don't path-validate arguments.
+
+### Filesystem surface
+- Binary file read or write. The write tools advertise as `..._text_file` deliberately.
+- Recursive directory deletion. `rm -rf` is reachable only through `run_build_command`'s `rm`, where the argument check still blocks shell expansion but permits flag arguments — this is intentional for build workflows but is not a separate tool.
+- Symbolic link creation. (Reading a symlink target through `stat_path`/`list_directory` is fine; `kind` reports `"other"`.)
+- PDF, image, audio, or other binary-specific tools.
+
+### Protocol surface
+- MCP `resources`, `prompts`, `roots`, or any optional MCP capability beyond `initialize`, `tools/list`, and `tools/call`. The server advertises only the `tools` capability.
+- Notifications, progress streams, cancellation. All tool calls are synchronous request/response.
+
+### Network and trust surface
+- Authentication, access tokens, or any auth model beyond OS-level SSH access to the host.
+- Public network exposure. The daemon binds only to `/var/run/mcpserverd.sock` (UNIX domain socket, mode 0600).
+- Outbound network calls from the daemon. The server never connects to the internet.
+
+### Things that are NOT out of scope (clarifications)
+- Build and packaging workflows ARE in scope as of v0.3.0 (`run_build_command`, `run_program`).
+- Running compiled test binaries IS in scope as of v0.3.0 (`run_program`).
+- Reading IRIX man pages IS in scope as of v0.3.1 (`run_inspect_command` with `man`).

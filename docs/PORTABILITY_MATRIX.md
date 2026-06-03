@@ -29,7 +29,7 @@ Using `-mips3` for IRIX 6.2 targets (R4000/R5000 hardware) requires the explicit
 # (Do not use a single cc invocation; see Makefile irix62 target)
 ```
 
-### 1.2 Compiler path on the Octane2
+### 1.3 Compiler path on the Octane2
 
 MIPSpro 7.4 installed to `/opt/MIPSpro/bin/cc` on the development Octane2.
 `/usr/bin/cc` may also resolve correctly depending on PATH. Use the full path
@@ -40,7 +40,7 @@ in Makefile rules to avoid ambiguity.
 # MIPSpro Compilers: Version 7.4
 ```
 
-### 1.2 Critical compiler flag notes
+### 1.4 Critical compiler flag notes
 
 - **`-ansi` is mandatory for IRIX 5.3.** The ucode compiler defaults to traditional K&R C. Without `-ansi`, implicit function declarations are accepted silently, and C89 features like prototypes may not be enforced.
 - **`-fullwarn`** is the MIPSpro equivalent of `-Wall`. Use it on all targets.
@@ -147,28 +147,35 @@ These macros must be defined when compiling with `-ansi` on IRIX 5.3 IDO to expo
 
 Files in `src/compat/` provide portable implementations of functions missing from IRIX 5.3.
 
-### `compat.h` — Type definitions and feature detection
+### `compat.h` — Type definitions, feature detection, version string
+
+Uses three-branch preprocessor conditionals to handle each compiler/ABI combination differently. Does NOT include `<sgidefs.h>` directly — relies on `<sys/types.h>` and the `_COMPILER_VERSION` / `_MIPS_SIM` macros that MIPSpro and IDO define.
 
 ```c
-/* Integer types for IRIX 5.3 (no stdint.h) */
-#ifndef MCPSERVER_COMPAT_H
-#define MCPSERVER_COMPAT_H
+#include <sys/types.h>
 
-#include <sgidefs.h>   /* _MIPS_SZPTR, _MIPS_SZINT etc. */
+#if defined(_COMPILER_VERSION)
+/* Case 1: MIPSpro N32/N64 on IRIX 6.x — has full <inttypes.h> */
+#include <inttypes.h>
 
-typedef signed char     int8_t;
-typedef unsigned char   uint8_t;
-typedef signed short    int16_t;
-typedef unsigned short  uint16_t;
-typedef signed int      int32_t;
-typedef unsigned int    uint32_t;
-typedef signed long long   int64_t;
-typedef unsigned long long uint64_t;
+#elif defined(_MIPS_SIM)
+/* Case 2: MIPSpro O32 cross-compile on IRIX 6.x.
+ * <sys/types.h> already provides int8_t...uint32_t. */
 
-/* Portable size_t safe max length for config paths */
-#define MCPSERVER_PATH_MAX 1024
-
+#else
+/* Case 3: IDO ucode compiler on IRIX 5.3 — define manually. */
+typedef signed   char        int8_t;
+typedef unsigned char        uint8_t;
+typedef signed   short       int16_t;
+typedef unsigned short       uint16_t;
+typedef signed   int         int32_t;
+typedef unsigned int         uint32_t;
+/* int64_t/uint64_t intentionally omitted —
+   long long is not available in strict C89 on the IDO compiler. */
 #endif
+
+#define MCPSERVER_PATH_MAX   1024
+#define MCPSERVER_VERSION    "0.3.1"   /* bumped each release */
 ```
 
 ### `realpath.c` — Path canonicalization
@@ -178,6 +185,10 @@ Implements path canonicalization without using `realpath(3)`. Uses `stat()`, `re
 ### `fnmatch.c` — Glob pattern matching
 
 Implements a subset of fnmatch matching `*`, `?`, `**` (recursive glob), and `[...]` character classes. Used by the deny glob rules in the boundary engine.
+
+### `snprintf.c` — Bounded formatted output for IRIX 5.3
+
+IRIX 5.3 libc lacks `snprintf(3)`. This compat implementation wraps `vsprintf` with a large intermediate buffer and length-checks the result. Required for all IRIX 5.3 builds — only compiled into the irix53 target (later IRIX versions have native `snprintf`).
 
 ---
 
@@ -189,15 +200,17 @@ O32 and N32 have different parameter slot sizes (32-bit vs 64-bit in N32). Do no
 
 ## 8. Open Questions (Unresolved Portability Items)
 
-| Item | Status | Resolution path |
-|---|---|---|
-| `sun_path` max length on IRIX 5.3 | Unknown | Check `/usr/include/sys/un.h` on Octane2; use path ≤ 104 bytes to be safe |
-| `fnmatch(3)` availability on IRIX 6.2 | Unknown | Implement in compat/ regardless and use always |
-| IRIX 6.2 compiler version | Unknown | Verify with `cc -version` on a 6.2 system when available |
-| IRIS emulator: verified IRIX 5.3 boot | Pending | Test with Indy IRIX 5.3 image |
-| Does `-nostartfiles` drop any crt other than crt1/crtn on IRIX 6.5? | Pending | Verify on Octane2 that only crt1.o and crtn.o are needed |
+All items from the original v0.1 portability investigation have been resolved through real-hardware testing during the v0.2 and v0.3 release cycles:
 
-These items are tracked here. Discoveries go into the appropriate compat/ files or this document.
+| Item | Resolution |
+|---|---|
+| `sun_path` max length on IRIX 5.3 | Confirmed 104 bytes safe across all targets; documented in AGENTS.md §5 |
+| `fnmatch(3)` availability on IRIX 6.x | Moot — we ship `src/compat/fnmatch.c` and use it on all targets |
+| IRIX 6.2 compiler version | Resolved — cross-compile from 6.5 using MIPSpro 7.4 with explicit MIPS-III startup objects (see §9) |
+| IRIS emulator: IRIX 5.3 boot | Confirmed working; used routinely for irix53 builds |
+| `-nostartfiles` crt usage on IRIX 6.5 | Confirmed: only `crt1.o` and `crtn.o` are needed; see §9 |
+
+Future portability questions go in this section as they arise.
 
 ---
 
