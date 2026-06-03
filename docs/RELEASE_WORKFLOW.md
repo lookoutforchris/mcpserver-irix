@@ -382,6 +382,8 @@ mcpserver version
 | Stray files at filesystem root (`/mcpserver`, `/packaging/`, `/scripts/`) | Build ran from wrong directory — always `cd` to project root first; check `ls /` after any build session |
 | NFS `ls` only works once per mount on IRIX 5.3 | Known kernel limitation; access files by name after first ls |
 | IRIS won't boot after rebuilding from source | Re-run NVRAM setup: `setenv -f eaddr 08:00:69:de:ad:53` then `rtc save` |
+| Octane2 `git pull` fails with "Could not resolve host: github.com" | DNS flaking on the Netgear EX1600 wireless bridge. Internet works (ping 8.8.8.8 succeeds). Fallback: `scp` changed source files directly from Windows instead of pulling. Only the changed files need to be transferred. |
+| Daemon crashes/core-dumps during `make install` | Fixed in v0.3.2: install now stops the daemon before replacing the binary. If you see a core at `/root/core` after install, check the strings inside — if it shows the old version's format strings it is from the previous binary, not a v0.3.2 bug. |
 
 ---
 
