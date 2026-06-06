@@ -31,6 +31,115 @@ No public HTTP listener. No OAuth. No cloud service. Transport: SSH for IRIX 6.5
 
 ---
 
+### Step 0 — Install OpenSSH on IRIX (if not already present)
+
+Claude Code requires `sshd` running on your IRIX machine. If you already have **SGUG-RSE** installed, it includes OpenSSH — skip to Step 1. If not, install one of the two packages below.
+
+> Only one sshd can listen on port 22. If you already have another sshd active (`fw_sshd`, `neko_sshd`, or SGUG's sshd), disable it before starting the new one.
+
+---
+
+#### Option A — SGI Freeware `fw_openssh-3.7.1p2`
+
+An older but widely available package from the SGI Freeware February 2003 CD.
+
+**Download:**
+- Individual tardists mirrored at `sgifiles.irixnet.org/freeware/`
+- Full Freeware Feb 2003 CD ISO archived at `jrra.zone/sgi/` (and `archive.decromancer.ca/jrra.zone/sgi/`)
+- Tardist filename: `fw_openssh-3.7.1p2.tardist`
+
+**Dependencies:**
+- **zlib** — `fw_zlib-*.tardist` from the same Freeware CD
+- **OpenSSL** — IRIX 6.5.19 and later already include a system OpenSSL; for earlier maintenance levels you also need `fw_openssl-*.tardist` from the Freeware CD
+- If `inst` reports missing prerequisites, install the zlib and openssl tardists first, then retry
+
+**Install:**
+
+```sh
+# Copy tardist(s) to IRIX, then:
+inst -f /tmp/fw_openssh-3.7.1p2.tardist
+
+# IMPORTANT: the default inst selection installs the client only.
+# At the Inst> prompt, explicitly select the server:
+install openssh.sw.server
+go
+quit
+```
+
+**Post-install — create the privilege separation user (not done automatically):**
+
+```sh
+# Add sshd group
+echo "sshd:*:74:" >> /etc/group
+
+# Add sshd user (home must be /var/empty, shell /bin/false)
+mkdir -p /var/empty
+chmod 711 /var/empty
+echo "sshd:*:74:74:sshd privsep:/var/empty:/bin/false" >> /etc/passwd
+```
+
+**Enable and start:**
+
+```sh
+chkconfig fw_sshd on
+/etc/init.d/fw_sshd start
+```
+
+Config file: `/etc/openssh/sshd_config`
+
+> **Note:** The exact path for the sshd binary (`/usr/freeware/sbin/sshd` vs another prefix) is not definitively confirmed in available documentation. If `which sshd` does not find it after install, check `/usr/freeware/sbin/` and `/usr/openssh/sbin/`.
+
+---
+
+#### Option B — Nekoware `neko_openssh-6.2p1`
+
+A more recent package from the Nekoware community collection. Recommended if you are already using other Nekoware packages.
+
+**Download:**
+- Primary: `ftp.irixnet.org/nekoware/current/neko_openssh-6.2p1.tardist`
+- Also available from Nekoware mirrors listed at `wiki.preterhuman.net/Nekoware`
+
+**Dependencies — install all three in a single `inst` session:**
+- `neko_openssh-6.2p1.tardist`
+- `neko_openssl-*.tardist` (from the same Nekoware current directory)
+- `neko_zlib-*.tardist` (from the same Nekoware current directory)
+
+**Install (all three at once):**
+
+```sh
+inst \
+  -f /tmp/neko_openssh-6.2p1.tardist \
+  -f /tmp/neko_openssl-*.tardist \
+  -f /tmp/neko_zlib-*.tardist
+# At the Inst> prompt: install all → go → quit
+```
+
+**Post-install — create the privilege separation user (not done automatically):**
+
+```sh
+mkdir -p /var/empty
+chmod 711 /var/empty
+echo "sshd:*:74:74:sshd privsep:/var/empty:/bin/false" >> /etc/passwd
+echo "sshd:*:74:" >> /etc/group
+```
+
+**Enable and start:**
+
+```sh
+chkconfig neko_sshd on
+/etc/init.d/neko_sshd start
+```
+
+Config file: `/usr/nekoware/etc/sshd_config`
+
+> **Warning:** Upgrading `neko_openssh` to a newer version overwrites config files. Back up `/usr/nekoware/etc/sshd_config` before any upgrade.
+
+---
+
+Once sshd is running and you can connect with `ssh root@<ip>`, proceed to Step 1.
+
+---
+
 ### Step 1 — Set Up SSH Key Access
 
 Claude Code connects by running `ssh` in the background and cannot enter a password interactively. Configure key-based authentication first.
