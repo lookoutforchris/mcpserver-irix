@@ -2,151 +2,99 @@
 
 A native, local-first MCP (Model Context Protocol) server for vintage SGI IRIX systems.
 
-Gives modern AI coding agents (Claude Code, Codex) safe, bounded access to an IRIX workspace — reading files, writing within policy, searching source trees, and running constrained inspection commands — directly on real or emulated IRIX hardware over SSH.
+Gives modern AI coding agents (Claude Code, Codex) safe, bounded access to an IRIX workspace — reading files, writing within policy, searching source trees, and running constrained inspection commands — directly on real or emulated IRIX hardware.
 
-No public HTTP listener. No OAuth. No cloud service. Transport security is SSH.
+No public HTTP listener. No OAuth. No cloud service. Transport: SSH for IRIX 6.5/6.2; inetd/TCP for IRIX 5.3.
 
 **Status: v0.3.2 — fully functional on IRIX 6.5, 6.2, and 5.3. 17 MCP tools including build/compile/run. Man pages included.**
 
 ---
 
-## Quick Start — Setting Up on a Fresh System
+## Quick Start
 
-This guide assumes you are a newcomer to this software. Follow each step in order.
-
-### What You Need Before Starting
-
-- An SGI workstation or server running **IRIX 6.5**, powered on and connected to your local network
-- Your IRIX machine's **IP address or hostname** (e.g., `192.168.1.50` or `octane.local`)
-- A **Windows 10/11 or macOS** workstation on the same local network
-- **Claude Code** (or another MCP-capable AI client such as Codex) installed on your Windows/Mac workstation
-- The `mcpserver-0.3.1-irix65.tardist` file (download from the [GitHub releases page](https://github.com/lookoutforchris/mcpserver-irix/releases))
-- SSH access to the IRIX machine (password login is fine for setup; we will configure key-based login below)
+> **Which IRIX version do you have?**
+> - **IRIX 6.5 or 6.2** — follow [Quick Start for IRIX 6.5 / 6.2](#quick-start-for-irix-65--62) below (SSH transport)
+> - **IRIX 5.3** — skip to [Quick Start for IRIX 5.3](#quick-start-for-irix-53) (inetd/TCP transport — no SSH required)
 
 ---
 
-### Step 1 — Set Up SSH Key Access (Passwordless Login)
+## Quick Start for IRIX 6.5 / 6.2
 
-Claude Code connects to your IRIX machine by running `ssh` in the background. It cannot enter a password interactively, so you must configure key-based authentication first.
+### What You Need
 
-**On your Windows workstation (PowerShell or Windows Terminal):**
+- An SGI workstation or server running **IRIX 6.5** or **6.2**, powered on and connected to your local network
+- Your IRIX machine's **IP address or hostname** (e.g., `192.168.1.50` or `octane.local`)
+- A **Windows, macOS, or Linux** workstation on the same local network
+- **Claude Code** (or another MCP-capable AI client such as Codex) installed on your workstation
+- The `mcpserver-0.3.2-irix65.tardist` (or `irix62`) file — download from the [GitHub releases page](https://github.com/lookoutforchris/mcpserver-irix/releases)
+- SSH access to the IRIX machine (password login is fine for initial setup)
+
+---
+
+### Step 1 — Set Up SSH Key Access
+
+Claude Code connects by running `ssh` in the background and cannot enter a password interactively. Configure key-based authentication first.
+
+**On your Windows workstation (PowerShell):**
 
 ```powershell
-# Generate an SSH key pair (press Enter to accept all defaults)
 ssh-keygen -t ed25519 -C "claude-irix"
-
-# Display your public key — you will need this in a moment
 cat $env:USERPROFILE\.ssh\id_ed25519.pub
 ```
 
-**On macOS (Terminal):**
+**On macOS or Linux:**
 
 ```sh
-# Generate an SSH key pair (press Enter to accept all defaults)
 ssh-keygen -t ed25519 -C "claude-irix"
-
-# Display your public key
 cat ~/.ssh/id_ed25519.pub
 ```
 
-The output looks something like:
-```
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... claude-irix
-```
-Copy this entire line to your clipboard.
-
-**Now SSH into your IRIX machine with your password:**
+Copy the output line (starts with `ssh-ed25519 ...`). Then SSH into your IRIX machine with your password and add the key:
 
 ```sh
-ssh root@192.168.1.50
-```
-
-Replace `192.168.1.50` with your actual IRIX IP address or hostname. Once logged in to the IRIX machine:
-
-```sh
-# Create the SSH directory if it does not exist
 mkdir -p /root/.ssh
 chmod 700 /root/.ssh
-
-# Add your public key (paste the line you copied above inside the quotes)
-echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... claude-irix" >> /root/.ssh/authorized_keys
+echo "ssh-ed25519 AAAAC3... claude-irix" >> /root/.ssh/authorized_keys
 chmod 600 /root/.ssh/authorized_keys
 ```
 
-**Test that passwordless login works:**
+Test that passwordless login works:
 
 ```sh
-# From your Windows/Mac workstation — this should log in without asking for a password
 ssh root@192.168.1.50 "echo 'SSH key login works'"
 ```
 
-If you see `SSH key login works` without being asked for a password, you are ready for the next step.
-
-> **Note:** If your IRIX SSH daemon is configured to deny root logins, you may need to edit `/etc/ssh/sshd_config` and set `PermitRootLogin yes`, then restart sshd with `killall -HUP sshd`. Alternatively, set up the key for a non-root user and adjust the install paths accordingly.
+> **Note:** If sshd denies root logins, edit `/etc/ssh/sshd_config`, set `PermitRootLogin yes`, and run `killall -HUP sshd`.
 
 ---
 
-### Step 2 — Install the Tardist on Your IRIX Machine
-
-Copy the tardist file to your IRIX machine:
+### Step 2 — Install the Tardist
 
 ```sh
-# From your Windows/Mac workstation
-scp mcpserver-0.3.1-irix65.tardist root@192.168.1.50:/tmp/
-```
+# Copy to the IRIX machine
+scp mcpserver-0.3.2-irix65.tardist root@192.168.1.50:/tmp/
 
-SSH into your IRIX machine and install:
-
-```sh
+# SSH in and install
 ssh root@192.168.1.50
-
-# Install using IRIX inst (the standard IRIX package installer)
-inst -f /tmp/mcpserver-0.3.1-irix65.tardist
-
-# At the Inst> prompt, type:
-go
-
-# When prompted about saving the distribution, type 2 to remove it
-# When inst finishes you should see:
-#   MCP Server for IRIX 6.5 installed.
-#   Configure: mcpserver add <name> <root> --ro
-#   Apply:     mcpserver apply
-#   Enable:    mcpserver enable
-
+inst -f /tmp/mcpserver-0.3.2-irix65.tardist
+# At the Inst> prompt: go
+# When prompted about saving the distribution: 2
 quit
 ```
 
-The installer places binaries at `/usr/sbin/mcpserverd` and `/usr/bin/mcpserver`, installs the init script at `/etc/init.d/mcpserverd`, and creates the rc symlinks for automatic startup.
-
-> **Alternatively**, you can drag the `.tardist` file into the IRIX Software Manager application if you have a graphical session running.
+The installer places binaries at `/usr/sbin/mcpserverd` and `/usr/bin/mcpserver`, installs the init script, and creates rc symlinks for automatic startup.
 
 ---
 
 ### Step 3 — Configure Your First Project
 
-A "project" tells the server which directory on your IRIX filesystem the AI agent is allowed to access, and whether it may write files. You need at least one project before starting the daemon.
-
 ```sh
-# SSH into your IRIX machine
 ssh root@192.168.1.50
 
-# Add a project — replace the path with your actual source directory
-# --ro means read-only (safe starting point); use --rw to allow file writes
+# Add a project (--ro = read-only; use --rw to allow writes)
 mcpserver add myproject /home/chris/src/myproject --ro
-
-# Preview what the generated policy will look like (optional)
-mcpserver preview
-
-# Write the policy file that the daemon reads
 mcpserver apply
-
-# Confirm the project is registered
 mcpserver show
-```
-
-Example output of `mcpserver show`:
-```
-myproject             read-only   /home/chris/src/myproject
 ```
 
 ---
@@ -154,35 +102,20 @@ myproject             read-only   /home/chris/src/myproject
 ### Step 4 — Enable and Start the Daemon
 
 ```sh
-# Enable at boot and start now (one command does both)
-mcpserver enable
-
-# Verify it is running
-mcpserver status
+mcpserver enable    # enables at boot and starts now
+mcpserver status    # should show: Daemon: running
 ```
-
-Expected output:
-```
-Boot:   enabled
-Daemon: running (pid 1234)
-```
-
-The daemon will now start automatically every time the IRIX machine boots. You can also start and stop it manually with `mcpserver start` and `mcpserver stop`.
 
 ---
 
 ### Step 5 — Configure Claude Code
 
-Create a file called `.mcp.json` in your project directory on your host workstation (the directory you open in Claude Code). The configuration differs by IRIX version.
-
-#### IRIX 6.5 or 6.2 — SSH transport
-
-SGUG-RSE provides OpenSSH on IRIX 6.5 and 6.2. Use the SSH-based entry:
+Create `.mcp.json` in your project directory on your workstation:
 
 ```json
 {
   "mcpServers": {
-    "irix-octane2": {
+    "irix-machine": {
       "type": "stdio",
       "command": "ssh",
       "args": [
@@ -197,47 +130,147 @@ SGUG-RSE provides OpenSSH on IRIX 6.5 and 6.2. Use the SSH-based entry:
 }
 ```
 
-Replace `root@192.168.1.50` with your IRIX username and IP address.
+Replace `root@192.168.1.50` with your IRIX username and IP address. The label `"irix-machine"` is your choice.
 
-#### IRIX 5.3 — inetd/TCP transport
+> **Codex users:** The same `.mcp.json` works with OpenAI Codex in VS Code.
 
-IRIX 5.3 does not include `sshd`. The daemon is reached via inetd over a raw TCP connection instead.
+---
 
-**On your IRIX 5.3 machine — configure inetd (one-time setup):**
+### Step 6 — Test the Connection
+
+Open Claude Code in the directory containing `.mcp.json` and ask:
+
+> *"List the files in my IRIX project directory"*
+
+To verify manually:
 
 ```sh
-# Register the service port
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}' | ssh root@192.168.1.50 /usr/bin/mcpserver stdio
+```
+
+Expected response:
+```json
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"irix-mcpserver","version":"0.3.2"}}}
+```
+
+---
+
+### Troubleshooting (IRIX 6.5 / 6.2)
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| SSH asks for a password | Key not set up | Repeat Step 1 |
+| `mcpserver: command not found` | Tardist not installed or PATH issue | Verify `/usr/bin/mcpserver` exists; log out and back in |
+| `Daemon: stopped` | Daemon not started | Run `mcpserver enable` or `mcpserver start` |
+| `allowed: false` for all paths | No projects configured | Run `mcpserver add` and `mcpserver apply` |
+| Claude connects but can't read files | Wrong path or `--ro` project | Check `mcpserver show` and verify the root path |
+
+For logs: `mcpserver logs` or `/var/adm/SYSLOG` on the IRIX machine.
+
+---
+
+## Quick Start for IRIX 5.3
+
+IRIX 5.3 does not include `sshd`. The MCP server is reached via inetd over a direct TCP connection — no SSH key setup required. Access is controlled by TCP Wrappers, which ships with base IRIX.
+
+> **Using the IRIS emulator?** The inetd/TCP transport is already configured on the emulator image. See [`docs/IRIS_EMULATOR_SETUP.md`](docs/IRIS_EMULATOR_SETUP.md) for the emulator-specific workflow.
+
+### What You Need
+
+- An SGI workstation running **IRIX 5.3**, powered on and connected to your local network
+- A way to copy files to the IRIX machine (NFS, FTP, `rcp`, or removable media)
+- A **Windows, macOS, or Linux** workstation on the same local network
+- **Claude Code** (or another MCP-capable AI client such as Codex) installed on your workstation
+- `mcpserver-0.3.2-irix53.tardist` and `tcp-bridge.ps1` (Windows only) — download both from the [GitHub releases page](https://github.com/lookoutforchris/mcpserver-irix/releases)
+
+---
+
+### Step 1 — Install the Tardist
+
+Copy `mcpserver-0.3.2-irix53.tardist` to your IRIX 5.3 machine by NFS, FTP, `rcp`, or removable media.
+
+> **Important:** IRIX 5.3 `inst` cannot install directly from a `.tardist` file — it reports "bad product". Unpack to a directory first:
+
+```sh
+mkdir /tmp/mcpinst
+cd /tmp/mcpinst
+tar xf /path/to/mcpserver-0.3.2-irix53.tardist
+inst -f /tmp/mcpinst
+# At the Inst> prompt: install all → go → quit
+```
+
+If `mcpserver version` still shows an old version after install, copy the binaries manually:
+
+```sh
+cp /tmp/mcpinst/mcpserverd /usr/sbin/mcpserverd
+cp /tmp/mcpinst/mcpserver  /usr/bin/mcpserver
+```
+
+---
+
+### Step 2 — Configure Your First Project
+
+```sh
+mcpserver add myproject /home/chris/src/myproject --ro
+mcpserver apply
+mcpserver show
+```
+
+---
+
+### Step 3 — Enable and Start the Daemon
+
+```sh
+/sbin/chkconfig -f mcpserver on
+/etc/init.d/mcpserverd start
+mcpserver status    # should show: Daemon: running
+```
+
+---
+
+### Step 4 — Configure inetd
+
+inetd listens on port 8753 and spawns `mcpserver stdio` for each incoming connection.
+
+```sh
+# Add the service port (check /etc/services first — add only if not present)
 echo "mcpmcp  8753/tcp" >> /etc/services
 
-# Register the inetd handler
+# Add the inetd handler
 echo "mcpmcp  stream  tcp  nowait  root  /usr/bin/mcpserver  mcpserver stdio" >> /etc/inetd.conf
 
 # Reload inetd
 killall -HUP inetd
 ```
 
-**Restrict access with TCP Wrappers (recommended):**
+---
 
-TCP Wrappers (`tcpd`) ships with IRIX and limits which hosts can connect to each inetd service. Verify `tcpd` is present at `/usr/etc/tcpd` before enabling this.
+### Step 5 — Restrict Access with TCP Wrappers
+
+TCP Wrappers limits which hosts can reach the MCP port. Verify `tcpd` exists at `/usr/etc/tcpd` before proceeding.
 
 ```sh
-# Deny all by default
+# Deny all connections by default
 echo "ALL: ALL" >> /etc/hosts.deny
 
-# Allow only your Claude Code host
+# Allow only your Claude Code workstation
 echo "mcpmcp: 192.168.1.50" >> /etc/hosts.allow
 ```
 
 Replace `192.168.1.50` with the IP address of your Windows, Linux, or macOS workstation.
 
-**On your host workstation — `.mcp.json` by platform:**
+---
 
-*Linux or macOS* — `nc` is built in:
+### Step 6 — Configure Claude Code
+
+Create `.mcp.json` in your project directory on your workstation. The entry differs by host platform.
+
+**Linux or macOS** — `nc` is built in:
 
 ```json
 {
   "mcpServers": {
-    "irix-indy": {
+    "irix-53": {
       "type": "stdio",
       "command": "nc",
       "args": ["192.168.1.50", "8753"]
@@ -246,12 +279,12 @@ Replace `192.168.1.50` with the IP address of your Windows, Linux, or macOS work
 }
 ```
 
-*Windows* — uses `tcp-bridge.ps1`, a PowerShell stdio↔TCP bridge. Download it from the [GitHub releases page](https://github.com/lookoutforchris/mcpserver-irix/releases) alongside the tardist, or find it at `scripts/tcp-bridge.ps1` if you cloned the repository.
+**Windows** — uses `tcp-bridge.ps1` (downloaded from the releases page in the prerequisite step):
 
 ```json
 {
   "mcpServers": {
-    "irix-indy": {
+    "irix-53": {
       "type": "stdio",
       "command": "powershell",
       "args": [
@@ -265,51 +298,43 @@ Replace `192.168.1.50` with the IP address of your Windows, Linux, or macOS work
 }
 ```
 
-Replace `C:/path/to/tcp-bridge.ps1` with the actual path where you saved the script.
+Replace `C:/path/to/tcp-bridge.ps1` with where you saved the script, and `192.168.1.50` with your IRIX machine's IP.
 
-> **For Codex users:** The same `.mcp.json` format works with OpenAI Codex in VS Code. Place the file at the root of your workspace.
+> **Codex users:** The same `.mcp.json` works with OpenAI Codex in VS Code.
 
 ---
 
-### Step 6 — Test the Connection
+### Step 7 — Test the Connection
 
-In Claude Code, open the directory containing your `.mcp.json` file and ask Claude a question that requires reading from the IRIX machine, such as:
+Open Claude Code in the directory containing `.mcp.json` and ask:
 
 > *"List the files in my IRIX project directory"*
 
-Claude Code will automatically connect to the daemon and use the MCP tools. If the connection works, you will see Claude listing files from your IRIX filesystem.
-
-**Manual verification — IRIX 6.5/6.2 (SSH):**
-
-```sh
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}' | ssh root@192.168.1.50 /usr/bin/mcpserver stdio
-```
-
-**Manual verification — IRIX 5.3 (Linux/macOS):**
+To verify manually (Linux/macOS):
 
 ```sh
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}' | nc 192.168.1.50 8753
 ```
 
-A successful response looks like:
+Expected response:
 ```json
 {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"irix-mcpserver","version":"0.3.2"}}}
 ```
 
 ---
 
-### Troubleshooting
+### Troubleshooting (IRIX 5.3)
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| SSH asks for a password | Key not set up or not authorized | Repeat Step 1 |
-| `mcpserver: command not found` | Tardist not installed or PATH issue | Verify `/usr/bin/mcpserver` exists; log out and back in |
-| `Daemon: stopped` | Daemon not started | Run `mcpserver enable` or `mcpserver start` |
+| `nc` hangs with no output | inetd not configured or not reloaded | Verify `/etc/inetd.conf` entry; run `killall -HUP inetd` |
+| Connection refused on port 8753 | inetd not listening | Check `netstat -a` on IRIX for port 8753 |
+| `mcpserver: command not found` | Tardist not installed | Verify `/usr/bin/mcpserver` exists; repeat Step 1 |
+| `Daemon: stopped` | Daemon not started | Run `/etc/init.d/mcpserverd start` |
 | `allowed: false` for all paths | No projects configured | Run `mcpserver add` and `mcpserver apply` |
-| Claude can connect but not read files | Project configured as `--ro` and path wrong | Check `mcpserver show` and verify the root path |
-| SSH connection fails on IRIX 5.3 | No sshd in base IRIX 5.3 | See `docs/FUTURE.md` — *Remote transport for real IRIX machines* |
+| Connection from host rejected | TCP Wrappers blocking | Check `/etc/hosts.allow` — verify host IP is listed |
 
-For operational logs, run `mcpserver logs` or check `/var/adm/SYSLOG` on the IRIX machine.
+For logs: `mcpserver logs` or `/var/adm/SYSLOG` on the IRIX machine.
 
 ---
 
