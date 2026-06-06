@@ -409,6 +409,37 @@ Create `.mcp.json` in your project directory on your workstation. The entry diff
 
 Replace `C:/path/to/tcp-bridge.ps1` with where you saved the script, and `192.168.1.50` with your IRIX machine's IP.
 
+**Windows (alternative) — WSL or MSYS2:**
+
+If you have WSL or MSYS2 already installed, you can use `nc` directly instead of `tcp-bridge.ps1`.
+
+*WSL* — if `nc` is available in your WSL distribution:
+```json
+{
+  "mcpServers": {
+    "irix-53": {
+      "type": "stdio",
+      "command": "wsl",
+      "args": ["nc", "192.168.1.50", "8753"]
+    }
+  }
+}
+```
+
+*MSYS2* — install nmap to get `ncat` (`pacman -S nmap` in an MSYS2 terminal), then use the full path to the binary:
+```json
+{
+  "mcpServers": {
+    "irix-53": {
+      "type": "stdio",
+      "command": "C:/msys64/ucrt64/bin/ncat.exe",
+      "args": ["192.168.1.50", "8753"]
+    }
+  }
+}
+```
+Adjust the path to match your MSYS2 installation directory.
+
 > **Codex users:** The same `.mcp.json` works with OpenAI Codex in VS Code.
 
 ---
