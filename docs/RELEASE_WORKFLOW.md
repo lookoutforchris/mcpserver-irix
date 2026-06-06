@@ -271,22 +271,26 @@ git push origin vX.Y.Z
 
 ## Step 9 — Create the GitHub Release
 
-Copy tardists to `release-assets/` (gitignored — local only):
+Copy tardists and the Windows TCP bridge script to `release-assets/` (gitignored — local only):
 
 ```sh
 cp mcpserver-X.Y.Z-*.tardist release-assets/
+cp scripts/tcp-bridge.ps1 release-assets/
 ```
 
-Create the formal release with all three tardists attached:
+Create the formal release with all three tardists and the bridge script attached:
 
 ```sh
 gh release create vX.Y.Z \
   release-assets/mcpserver-X.Y.Z-irix65.tardist \
   release-assets/mcpserver-X.Y.Z-irix62.tardist \
   release-assets/mcpserver-X.Y.Z-irix53.tardist \
+  release-assets/tcp-bridge.ps1 \
   --title "vX.Y.Z — <one-line summary>" \
   --notes "<release notes>"
 ```
+
+`tcp-bridge.ps1` is the Windows stdio↔TCP bridge for IRIX 5.3 remote connections. Include it every release — it does not change between releases unless the bridge logic changes.
 
 Verify the release appears at:
 `https://github.com/lookoutforchris/mcpserver-irix/releases`

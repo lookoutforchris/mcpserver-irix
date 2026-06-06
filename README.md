@@ -171,9 +171,13 @@ The daemon will now start automatically every time the IRIX machine boots. You c
 
 ---
 
-### Step 5 — Configure Claude Code on Windows or Mac
+### Step 5 — Configure Claude Code
 
-Create a file called `.mcp.json` in your project directory on your Windows or Mac workstation (the directory you open in Claude Code). Add the following content, replacing the hostname and username with your own:
+Create a file called `.mcp.json` in your project directory on your host workstation (the directory you open in Claude Code). The configuration differs by IRIX version.
+
+#### IRIX 6.5 or 6.2 — SSH transport
+
+SGUG-RSE provides OpenSSH on IRIX 6.5 and 6.2. Use the SSH-based entry:
 
 ```json
 {
@@ -193,7 +197,75 @@ Create a file called `.mcp.json` in your project directory on your Windows or Ma
 }
 ```
 
-Replace `root@192.168.1.50` with your IRIX username and IP address. The name `"irix-octane2"` is a label you choose — it appears in Claude Code's tool list.
+Replace `root@192.168.1.50` with your IRIX username and IP address.
+
+#### IRIX 5.3 — inetd/TCP transport
+
+IRIX 5.3 does not include `sshd`. The daemon is reached via inetd over a raw TCP connection instead.
+
+**On your IRIX 5.3 machine — configure inetd (one-time setup):**
+
+```sh
+# Register the service port
+echo "mcpmcp  8753/tcp" >> /etc/services
+
+# Register the inetd handler
+echo "mcpmcp  stream  tcp  nowait  root  /usr/bin/mcpserver  mcpserver stdio" >> /etc/inetd.conf
+
+# Reload inetd
+killall -HUP inetd
+```
+
+**Restrict access with TCP Wrappers (recommended):**
+
+TCP Wrappers (`tcpd`) ships with IRIX and limits which hosts can connect to each inetd service. Verify `tcpd` is present at `/usr/etc/tcpd` before enabling this.
+
+```sh
+# Deny all by default
+echo "ALL: ALL" >> /etc/hosts.deny
+
+# Allow only your Claude Code host
+echo "mcpmcp: 192.168.1.50" >> /etc/hosts.allow
+```
+
+Replace `192.168.1.50` with the IP address of your Windows, Linux, or macOS workstation.
+
+**On your host workstation — `.mcp.json` by platform:**
+
+*Linux or macOS* — `nc` is built in:
+
+```json
+{
+  "mcpServers": {
+    "irix-indy": {
+      "type": "stdio",
+      "command": "nc",
+      "args": ["192.168.1.50", "8753"]
+    }
+  }
+}
+```
+
+*Windows* — uses `tcp-bridge.ps1`, a PowerShell stdio↔TCP bridge. Download it from the [GitHub releases page](https://github.com/lookoutforchris/mcpserver-irix/releases) alongside the tardist, or find it at `scripts/tcp-bridge.ps1` if you cloned the repository.
+
+```json
+{
+  "mcpServers": {
+    "irix-indy": {
+      "type": "stdio",
+      "command": "powershell",
+      "args": [
+        "-NonInteractive", "-File",
+        "C:/path/to/tcp-bridge.ps1",
+        "-RemoteHost", "192.168.1.50",
+        "-Port", "8753"
+      ]
+    }
+  }
+}
+```
+
+Replace `C:/path/to/tcp-bridge.ps1` with the actual path where you saved the script.
 
 > **For Codex users:** The same `.mcp.json` format works with OpenAI Codex in VS Code. Place the file at the root of your workspace.
 
@@ -205,18 +277,23 @@ In Claude Code, open the directory containing your `.mcp.json` file and ask Clau
 
 > *"List the files in my IRIX project directory"*
 
-Claude Code will automatically connect to the daemon over SSH and use the MCP tools. If the connection works, you will see Claude listing files from your IRIX filesystem.
+Claude Code will automatically connect to the daemon and use the MCP tools. If the connection works, you will see Claude listing files from your IRIX filesystem.
 
-You can also verify manually from the command line:
+**Manual verification — IRIX 6.5/6.2 (SSH):**
 
 ```sh
-# On your Windows/Mac workstation — send a ping to the IRIX daemon
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}' | ssh root@192.168.1.50 /usr/bin/mcpserver stdio
+```
+
+**Manual verification — IRIX 5.3 (Linux/macOS):**
+
+```sh
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}' | nc 192.168.1.50 8753
 ```
 
 A successful response looks like:
 ```json
-{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"irix-mcpserver","version":"0.3.1"}}}
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"irix-mcpserver","version":"0.3.2"}}}
 ```
 
 ---
@@ -230,6 +307,7 @@ A successful response looks like:
 | `Daemon: stopped` | Daemon not started | Run `mcpserver enable` or `mcpserver start` |
 | `allowed: false` for all paths | No projects configured | Run `mcpserver add` and `mcpserver apply` |
 | Claude can connect but not read files | Project configured as `--ro` and path wrong | Check `mcpserver show` and verify the root path |
+| SSH connection fails on IRIX 5.3 | No sshd in base IRIX 5.3 | See `docs/FUTURE.md` — *Remote transport for real IRIX machines* |
 
 For operational logs, run `mcpserver logs` or check `/var/adm/SYSLOG` on the IRIX machine.
 
@@ -327,9 +405,11 @@ See [`docs/PORTABILITY_MATRIX.md`](docs/PORTABILITY_MATRIX.md) for IRIX 6.2 and 
 
 | Platform | ABI | ISA | Compiler | Status |
 |---|---|---|---|---|
-| IRIX 6.5 | N32 | MIPS-IV | MIPSpro 7.4 | **Shipping (v0.3.1)** |
-| IRIX 6.2 | N32 | MIPS-III | MIPSpro 7.4 (cross-compiled on 6.5) | **Shipping (v0.3.1)** |
-| IRIX 5.3 | O32 | MIPS-II | IDO ucode `cc` | **Shipping (v0.3.1)** |
+| IRIX 6.5 | N32 | MIPS-IV | MIPSpro 7.4 | **Shipping (v0.3.2)** |
+| IRIX 6.2 | N32 | MIPS-III | MIPSpro 7.4 (cross-compiled on 6.5) | **Shipping (v0.3.2)** |
+| IRIX 5.3 | O32 | MIPS-II | IDO ucode `cc` | **Shipping (v0.3.2)** ¹ |
+
+¹ **IRIX 5.3 remote transport limitation:** IRIX 5.3 does not include `sshd` in the base OS. The SSH-based Quick Start (Steps 1–6) applies to IRIX 6.5 and 6.2 only, where SGUG-RSE provides OpenSSH. For real IRIX 5.3 hardware accessed remotely, a different transport is required. See [`docs/FUTURE.md`](docs/FUTURE.md) — *Remote transport for real IRIX machines* — for the options under consideration. The IRIS emulator setup (which runs IRIX 5.3 locally on the same machine as Claude Code) is unaffected.
 
 ---
 
